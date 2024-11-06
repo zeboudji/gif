@@ -4,9 +4,13 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import imageio
+import seaborn as sns
 
-# Fonction pour créer et enregistrer le GIF animé en mémoire avec améliorations
-def create_gif_with_labels_and_pause():
+# Appliquer un style moderne de Seaborn
+sns.set(style="whitegrid")
+
+# Fonction pour créer et enregistrer le GIF animé en mémoire avec améliorations modernes
+def create_modern_gif():
     metiers = [
         "Ingénieurs de l'informatique",
         "Infirmiers, sages-femmes",
@@ -36,11 +40,14 @@ def create_gif_with_labels_and_pause():
     postes_reverses = postes_supplementaires[::-1]
     croissance_reverses = croissance[::-1]
     
+    # Choisir une palette de couleurs moderne
+    palette = sns.color_palette("viridis", len(metiers))
+    
     # Création de la figure avec une taille suffisante
     fig, ax = plt.subplots(figsize=(14, 10))  # Taille augmentée pour plus d'espace
-    ax.set_xlim(0, max(postes_supplementaires) * 1.2)  # Augmenter l'espace pour les labels de croissance
-    ax.set_xlabel("Nombre de postes supplémentaires (en milliers)", fontsize=12)
-    ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030", fontsize=16)
+    ax.set_xlim(0, max(postes_supplementaires) * 1.3)  # Augmenter l'espace pour les labels de croissance
+    ax.set_xlabel("Nombre de postes supplémentaires (en milliers)", fontsize=14, fontweight='bold')
+    ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030", fontsize=18, fontweight='bold')
     
     images = []
     
@@ -50,22 +57,34 @@ def create_gif_with_labels_and_pause():
         ax.barh(
             metiers_reverses, 
             [val * (i / 100) for val in postes_reverses], 
-            color='skyblue'
+            color=palette,
+            edgecolor='white'
         )
-        ax.set_xlim(0, max(postes_supplementaires) * 1.2)
-        ax.set_xlabel("Nombre de postes supplémentaires (en milliers)", fontsize=12)
-        ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030", fontsize=16)
+        ax.set_xlim(0, max(postes_supplementaires) * 1.3)
+        ax.set_xlabel("Nombre de postes supplémentaires (en milliers)", fontsize=14, fontweight='bold')
+        ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030", fontsize=18, fontweight='bold')
         
         # Ajuster les marges pour éviter que les labels ne soient tronqués
         plt.subplots_adjust(left=0.4, right=0.95, top=0.9, bottom=0.1)
         
         # Ajouter les labels de croissance à la fin de chaque barre
         for index, (val, perc) in enumerate(zip([val * (i / 100) for val in postes_reverses], croissance_reverses)):
-            ax.text(val + max(postes_supplementaires)*0.01, index, f"{perc}%", va='center', fontsize=10)
+            ax.text(val + max(postes_supplementaires)*0.01, index, f"{perc}%", va='center', fontsize=12, fontweight='bold', color='black')
+        
+        # Ajouter des annotations avec des flèches pour une touche moderne
+        for index, (val, perc) in enumerate(zip([val * (i / 100) for val in postes_reverses], croissance_reverses)):
+            ax.annotate(
+                f"{perc}%", 
+                xy=(val, index), 
+                xytext=(val + max(postes_supplementaires)*0.05, index),
+                arrowprops=dict(facecolor='black', shrink=0.05, width=0.5, headwidth=5),
+                fontsize=10,
+                color='black'
+            )
         
         # Sauvegarder l'image dans un buffer en mémoire
         buf = BytesIO()
-        plt.savefig(buf, format='PNG', bbox_inches='tight')
+        plt.savefig(buf, format='PNG', bbox_inches='tight', transparent=False)
         buf.seek(0)
         try:
             image = Image.open(buf).convert('RGB')  # Convertir en 'RGB'
@@ -75,7 +94,7 @@ def create_gif_with_labels_and_pause():
         buf.close()
     
     # Ajouter des copies de la dernière frame pour simuler un temps d'arrêt
-    pause_frames = 10  # Nombre de frames de pause
+    pause_frames = 15  # Nombre de frames de pause
     if images:
         last_frame = images[-1]
         for _ in range(pause_frames):
@@ -105,11 +124,16 @@ def create_gif_with_labels_and_pause():
     buf_gif.seek(0)
     return buf_gif
 
-# Streamlit Interface
-st.title("Animation des métiers en expansion (2019-2030)")
-st.write("Ce GIF animé montre la progression des métiers en forte croissance.")
+# Interface Streamlit
+st.set_page_config(page_title="Animation des Métiers en Expansion", layout="wide")
+st.title("Animation des Métiers en Expansion (2019-2030)")
+st.markdown("""
+Ce GIF animé montre la progression des métiers en forte croissance entre 2019 et 2030.
+* **Nombre de postes supplémentaires** sur l'axe des abscisses (en milliers).
+* **Pourcentage de croissance** affiché à la fin de chaque barre.
+""")
 
-# Générer et afficher le GIF avec les améliorations
-gif_buffer = create_gif_with_labels_and_pause()
+# Générer et afficher le GIF avec les améliorations modernes
+gif_buffer = create_modern_gif()
 if gif_buffer:
     st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
