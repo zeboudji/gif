@@ -10,7 +10,7 @@ import matplotlib.patheffects as path_effects  # Import pour les effets de conto
 # Appliquer un style moderne de Seaborn
 sns.set(style="whitegrid")
 
-# Fonction pour créer et enregistrer le GIF animé en mémoire avec améliorations modernes
+# Fonction pour créer et enregistrer le GIF animé en mémoire sans boucle
 def create_modern_gif():
     metiers = [
         "Ingénieurs de l'informatique",
@@ -51,11 +51,6 @@ def create_modern_gif():
     ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030", fontsize=18, fontweight='bold')
     
     images = []
-    
-    # Paramètres de pause
-    pause_duration_seconds = 2  # Temps d'arrêt total en secondes (1 ou 2 secondes)
-    frame_duration_pause = 1.0  # Durée par frame de pause en secondes
-    pause_frames = int(pause_duration_seconds / frame_duration_pause)  # Nombre de frames de pause
     
     # Nombre de frames pour l'animation
     for i in range(0, 101, 2):  # Incrémenter de 2 pour réduire le nombre de frames
@@ -107,12 +102,6 @@ def create_modern_gif():
             st.error(f"Erreur lors de l'ouverture de l'image : {e}")
         buf.close()
     
-    # Ajouter des copies de la dernière frame pour simuler un temps d'arrêt
-    if images:
-        last_frame = images[-1]
-        for _ in range(pause_frames):
-            images.append(last_frame)
-    
     plt.close(fig)  # Fermer la figure pour libérer de la mémoire
     
     # Convertir les images PIL en tableaux numpy
@@ -125,11 +114,9 @@ def create_modern_gif():
     # Créer le GIF avec imageio dans un buffer en mémoire
     buf_gif = BytesIO()
     try:
-        # Durée de chaque frame : 0.02s pour les frames d'animation, frame_duration_pause pour les frames de pause
-        durations = [0.02]*len(images)
-        for i in range(len(images)-pause_frames, len(images)):
-            durations[i] = frame_duration_pause  # Durée des frames de pause
-        imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)  # loop=0 pour boucle infinie
+        # Durée uniforme pour chaque frame : 0.02s
+        durations = [0.02] * len(images)
+        imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=1)  # loop=1 pour jouer une fois
         st.success("GIF créé avec succès.")
     except Exception as e:
         st.error(f"Erreur lors de la création du GIF : {e}")
@@ -146,7 +133,7 @@ Ce GIF animé montre la progression des métiers en forte croissance entre 2019 
 * **Pourcentage de croissance** affiché à la fin de chaque barre.
 """)
 
-# Générer et afficher le GIF avec les améliorations modernes
+# Générer et afficher le GIF sans boucle
 gif_buffer = create_modern_gif()
 if gif_buffer:
     st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
