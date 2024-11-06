@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 import imageio
 import seaborn as sns
+import matplotlib.patheffects as path_effects  # Import pour les effets de contour
 
 # Appliquer un style moderne de Seaborn
 sns.set(style="whitegrid")
@@ -73,18 +74,27 @@ def create_modern_gif():
         # Ajuster les marges pour éviter que les labels ne soient tronqués
         plt.subplots_adjust(left=0.4, right=0.95, top=0.9, bottom=0.1)
         
+        # Calculer le pourcentage actuel pour chaque métier
+        # Ce pourcentage va de 0 à sa valeur finale en fonction de l'avancement i
+        pourcentages_actuels = [perc * (i / 100) for perc in croissance_reverses]
+        
         # Ajouter les labels de croissance à la fin de chaque barre avec un fond semi-transparent
-        for index, (val, perc) in enumerate(zip([val * (i / 100) for val in postes_reverses], croissance_reverses)):
-            ax.text(
+        for index, (val, perc_actuel) in enumerate(zip([val * (i / 100) for val in postes_reverses], pourcentages_actuels)):
+            # Arrondir le pourcentage actuel à l'entier le plus proche
+            perc_display = f"{int(perc_actuel)}%"
+            
+            text = ax.text(
                 val + max(postes_supplementaires)*0.01, 
                 index, 
-                f"{perc}%", 
+                perc_display, 
                 va='center', 
                 fontsize=12, 
                 fontweight='bold', 
                 color='black',
                 bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
             )
+            # Ajouter un contour au texte pour le rendre plus visible
+            text.set_path_effects([path_effects.Stroke(linewidth=1, foreground='white'), path_effects.Normal()])
         
         # Sauvegarder l'image dans un buffer en mémoire
         buf = BytesIO()
@@ -140,4 +150,3 @@ Ce GIF animé montre la progression des métiers en forte croissance entre 2019 
 gif_buffer = create_modern_gif()
 if gif_buffer:
     st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
-    
