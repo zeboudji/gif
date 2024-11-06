@@ -53,8 +53,8 @@ def create_modern_gif():
     images = []
     
     # Paramètres de pause
-    pause_duration_seconds = 8  # Temps d'arrêt total en secondes
-    frame_duration_pause = 0.2  # Durée par frame de pause en secondes
+    pause_duration_seconds = 2  # Temps d'arrêt total en secondes (1 ou 2 secondes)
+    frame_duration_pause = 1.0  # Durée par frame de pause en secondes
     pause_frames = int(pause_duration_seconds / frame_duration_pause)  # Nombre de frames de pause
     
     # Nombre de frames pour l'animation
