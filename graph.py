@@ -48,9 +48,10 @@ def create_gif():
         
         # Sauvegarder l'image dans un buffer en mémoire
         buf = BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='PNG')
         buf.seek(0)
-        images.append(Image.open(buf).convert('P'))
+        image = Image.open(buf).convert('RGB')  # Convertir en 'RGB' au lieu de 'P'
+        images.append(image)
         buf.close()
     
     # Créer le GIF dans un buffer en mémoire
