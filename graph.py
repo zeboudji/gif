@@ -140,3 +140,4 @@ Ce GIF animé montre la progression des métiers en forte croissance entre 2019 
 gif_buffer = create_modern_gif()
 if gif_buffer:
     st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
+    
