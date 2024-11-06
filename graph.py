@@ -26,7 +26,7 @@ def create_gif_with_labels_and_pause():
     ]
     
     postes_supplementaires = [110, 95, 80, 75, 70, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15]
-    croissance = [26, 18, 15, 17, 18, 16, 11, 24, 30, 15, 13, 13, 10, 9, 9]
+    croissance = [26, 18, 15, 17, 18, 16, 11, 24, 30, 15, 13, 13, 11, 10, 9]
     
     # Vérifier que les listes ont la même longueur
     assert len(metiers) == len(postes_supplementaires) == len(croissance), "Les listes doivent avoir la même longueur."
