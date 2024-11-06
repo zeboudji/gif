@@ -1,8 +1,8 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 from PIL import Image
+import tempfile
 import os
 
 # Fonction pour créer et enregistrer le GIF animé
@@ -34,29 +34,23 @@ def create_gif():
     ax.set_xlabel("Nombre de postes supplémentaires (en milliers)")
     ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030")
     
-    # Dossier temporaire pour stocker les images
-    os.makedirs("temp_images", exist_ok=True)
-    
-    # Créer des images pour l'animation
-    filenames = []
-    for i in range(101):
-        ax.clear()
-        ax.barh(metiers_reverses, [val * (i / 100) for val in postes_supplementaires_reverses], color='skyblue')
-        ax.set_xlim(0, max(postes_supplementaires) * 1.1)
-        ax.set_xlabel("Nombre de postes supplémentaires (en milliers)")
-        ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030")
-        filename = f"temp_images/plot_{i}.png"
-        plt.savefig(filename)
-        filenames.append(filename)
+    # Utiliser un dossier temporaire pour stocker les images
+    with tempfile.TemporaryDirectory() as temp_dir:
+        filenames = []
+        for i in range(101):
+            ax.clear()
+            ax.barh(metiers_reverses, [val * (i / 100) for val in postes_supplementaires_reverses], color='skyblue')
+            ax.set_xlim(0, max(postes_supplementaires) * 1.1)
+            ax.set_xlabel("Nombre de postes supplémentaires (en milliers)")
+            ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030")
+            filename = os.path.join(temp_dir, f"plot_{i}.png")
+            plt.savefig(filename)
+            filenames.append(filename)
 
-    # Créer le GIF
-    images = [Image.open(f) for f in filenames]
-    gif_path = "graphique_anime.gif"
-    images[0].save(gif_path, save_all=True, append_images=images[1:], duration=50, loop=0)
-    
-    # Nettoyer les fichiers temporaires
-    for filename in filenames:
-        os.remove(filename)
+        # Créer le GIF
+        images = [Image.open(f) for f in filenames]
+        gif_path = os.path.join(temp_dir, "graphique_anime.gif")
+        images[0].save(gif_path, save_all=True, append_images=images[1:], duration=50, loop=0)
     
     return gif_path
 
