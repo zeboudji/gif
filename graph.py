@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from io import BytesIO
+import imageio
 
 # Fonction pour créer et enregistrer le GIF animé en mémoire
-def create_gif():
+def create_gif_with_imageio():
     metiers = [
         "Ingénieurs de l'informatique",
         "Infirmiers, sages-femmes",
@@ -50,19 +51,18 @@ def create_gif():
         buf = BytesIO()
         plt.savefig(buf, format='PNG')
         buf.seek(0)
-        image = Image.open(buf).convert('RGB')  # Convertir en 'RGB' au lieu de 'P'
+        image = Image.open(buf).convert('RGB')  # Convertir en 'RGB'
         images.append(image)
         buf.close()
     
-    # Créer le GIF dans un buffer en mémoire
+    plt.close(fig)  # Fermer la figure pour libérer de la mémoire
+    
+    # Convertir les images PIL en tableaux numpy
+    frames = [np.array(img) for img in images]
+    
+    # Créer le GIF avec imageio dans un buffer en mémoire
     buf_gif = BytesIO()
-    images[0].save(
-        buf_gif, 
-        save_all=True, 
-        append_images=images[1:], 
-        duration=50, 
-        loop=0
-    )
+    imageio.mimsave(buf_gif, frames, format='GIF', duration=0.05)
     buf_gif.seek(0)
     return buf_gif
 
@@ -71,5 +71,5 @@ st.title("Animation des métiers en expansion (2019-2030)")
 st.write("Ce GIF animé montre la progression des métiers en forte croissance.")
 
 # Générer et afficher le GIF
-gif_buffer = create_gif()
+gif_buffer = create_gif_with_imageio()
 st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
