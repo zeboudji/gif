@@ -51,6 +51,11 @@ def create_modern_gif():
     
     images = []
     
+    # Paramètres de pause
+    pause_duration_seconds = 3  # Temps d'arrêt total en secondes
+    frame_duration_pause = 0.2  # Durée par frame de pause en secondes
+    pause_frames = int(pause_duration_seconds / frame_duration_pause)  # Nombre de frames de pause
+    
     # Nombre de frames pour l'animation
     for i in range(0, 101, 2):  # Incrémenter de 2 pour réduire le nombre de frames
         ax.clear()
@@ -93,7 +98,6 @@ def create_modern_gif():
         buf.close()
     
     # Ajouter des copies de la dernière frame pour simuler un temps d'arrêt
-    pause_frames = 15  # Nombre de frames de pause
     if images:
         last_frame = images[-1]
         for _ in range(pause_frames):
@@ -111,10 +115,10 @@ def create_modern_gif():
     # Créer le GIF avec imageio dans un buffer en mémoire
     buf_gif = BytesIO()
     try:
-        # Durée de chaque frame : 0.02s pour les frames d'animation, 0.2s pour les frames de pause
+        # Durée de chaque frame : 0.02s pour les frames d'animation, frame_duration_pause pour les frames de pause
         durations = [0.02]*len(images)
         for i in range(len(images)-pause_frames, len(images)):
-            durations[i] = 0.2  # Augmenter la durée des frames de pause
+            durations[i] = frame_duration_pause  # Durée des frames de pause
         imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)  # loop=0 pour boucle infinie
         st.success("GIF créé avec succès.")
     except Exception as e:
