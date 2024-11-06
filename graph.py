@@ -1,55 +1,69 @@
+import streamlit as st
 import matplotlib.pyplot as plt
-import io
+import matplotlib.animation as animation
+import numpy as np
 from PIL import Image
+import os
 
-# Données
-metiers = [
-    "Ingénieurs de l'informatique",
-    "Infirmiers, sages-femmes",
-    "Aides-soignants",
-    "Cadres commerciaux et technico-commerciaux",
-    "Aides à domicile",
-    "Ouvriers qualifiés de la manutention",
-    "Cadres des services administratifs, comptables et financiers",
-    "Ingénieurs et cadres techniques de l'industrie",
-    "Cadres du bâtiment et des travaux publics",
-    "Ouvriers peu qualifiés de la manutention",
-    "Personnels d'études et de recherche",
-    "Médecins et assimilés",
-    "Techniciens des services administratifs, comptables et financiers",
-    "Techniciens et agents de maîtrise de la maintenance",
-    "Professions paramédicales"
-]
+# Fonction pour créer et enregistrer le GIF animé
+def create_gif():
+    metiers = [
+        "Ingénieurs de l'informatique",
+        "Infirmiers, sages-femmes",
+        "Aides-soignants",
+        "Cadres commerciaux et technico-commerciaux",
+        "Aides à domicile",
+        "Ouvriers qualifiés de la manutention",
+        "Cadres des services administratifs, comptables et financiers",
+        "Ingénieurs et cadres techniques de l'industrie",
+        "Cadres du bâtiment et des travaux publics",
+        "Ouvriers peu qualifiés de la manutention",
+        "Personnels d'études et de recherche",
+        "Médecins et assimilés",
+        "Techniciens des services administratifs, comptables et financiers",
+        "Techniciens et agents de maîtrise de la maintenance",
+        "Professions paramédicales"
+    ]
+    
+    postes_supplementaires = [110, 95, 80, 75, 70, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15]
+    metiers_reverses = metiers[::-1]
+    postes_supplementaires_reverses = postes_supplementaires[::-1]
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.set_xlim(0, max(postes_supplementaires) * 1.1)
+    ax.set_xlabel("Nombre de postes supplémentaires (en milliers)")
+    ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030")
+    
+    # Dossier temporaire pour stocker les images
+    os.makedirs("temp_images", exist_ok=True)
+    
+    # Créer des images pour l'animation
+    filenames = []
+    for i in range(101):
+        ax.clear()
+        ax.barh(metiers_reverses, [val * (i / 100) for val in postes_supplementaires_reverses], color='skyblue')
+        ax.set_xlim(0, max(postes_supplementaires) * 1.1)
+        ax.set_xlabel("Nombre de postes supplémentaires (en milliers)")
+        ax.set_title("Les métiers en plus forte expansion entre 2019 et 2030")
+        filename = f"temp_images/plot_{i}.png"
+        plt.savefig(filename)
+        filenames.append(filename)
 
-postes_supplementaires = [110, 95, 80, 75, 70, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15]
-croissance = [26, 18, 15, 17, 18, 16, 11, 24, 30, 15, 13, 13, 10, 9, 9]
+    # Créer le GIF
+    images = [Image.open(f) for f in filenames]
+    gif_path = "graphique_anime.gif"
+    images[0].save(gif_path, save_all=True, append_images=images[1:], duration=50, loop=0)
+    
+    # Nettoyer les fichiers temporaires
+    for filename in filenames:
+        os.remove(filename)
+    
+    return gif_path
 
-# Tri des données pour un affichage ordonné
-metiers_reverses = metiers[::-1]
-postes_supplementaires_reverses = postes_supplementaires[::-1]
-croissance_reverses = croissance[::-1]
+# Streamlit
+st.title("Animation des métiers en expansion (2019-2030)")
+st.write("Ce GIF animé montre la progression des métiers en forte croissance.")
 
-# Création du graphique
-plt.figure(figsize=(12, 8))
-barres = plt.barh(metiers_reverses, postes_supplementaires_reverses, color='skyblue')
-
-# Ajout des pourcentages de croissance sur les barres
-for index, barre in enumerate(barres):
-    largeur = barre.get_width()
-    plt.text(largeur + 1, barre.get_y() + barre.get_height() / 2,
-             f"{croissance_reverses[index]}%", va='center')
-
-# Titres et labels
-plt.xlabel("Nombre de postes supplémentaires (en milliers)")
-plt.title("Les métiers en plus forte expansion entre 2019 et 2030")
-
-plt.tight_layout()
-
-# Enregistrement du graphique en tant que GIF
-buf = io.BytesIO()
-plt.savefig(buf, format='png')
-buf.seek(0)
-img = Image.open(buf)
-img.save('graphique.gif', 'GIF')
-
-plt.show()
+# Générer et afficher le GIF
+gif_path = create_gif()
+st.image(gif_path, caption="Métiers en expansion", use_column_width=True)
