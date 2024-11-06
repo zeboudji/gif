@@ -58,7 +58,8 @@ def create_modern_gif():
             metiers_reverses, 
             [val * (i / 100) for val in postes_reverses], 
             color=palette,
-            edgecolor='white'
+            edgecolor='white',
+            alpha=0.8  # Ajout de transparence pour un effet moderne
         )
         ax.set_xlim(0, max(postes_supplementaires) * 1.3)
         ax.set_xlabel("Nombre de postes supplémentaires (en milliers)", fontsize=14, fontweight='bold')
@@ -67,19 +68,17 @@ def create_modern_gif():
         # Ajuster les marges pour éviter que les labels ne soient tronqués
         plt.subplots_adjust(left=0.4, right=0.95, top=0.9, bottom=0.1)
         
-        # Ajouter les labels de croissance à la fin de chaque barre
+        # Ajouter les labels de croissance à la fin de chaque barre avec un fond semi-transparent
         for index, (val, perc) in enumerate(zip([val * (i / 100) for val in postes_reverses], croissance_reverses)):
-            ax.text(val + max(postes_supplementaires)*0.01, index, f"{perc}%", va='center', fontsize=12, fontweight='bold', color='black')
-        
-        # Ajouter des annotations avec des flèches pour une touche moderne
-        for index, (val, perc) in enumerate(zip([val * (i / 100) for val in postes_reverses], croissance_reverses)):
-            ax.annotate(
+            ax.text(
+                val + max(postes_supplementaires)*0.01, 
+                index, 
                 f"{perc}%", 
-                xy=(val, index), 
-                xytext=(val + max(postes_supplementaires)*0.05, index),
-                arrowprops=dict(facecolor='black', shrink=0.05, width=0.5, headwidth=5),
-                fontsize=10,
-                color='black'
+                va='center', 
+                fontsize=12, 
+                fontweight='bold', 
+                color='black',
+                bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
             )
         
         # Sauvegarder l'image dans un buffer en mémoire
@@ -116,7 +115,7 @@ def create_modern_gif():
         durations = [0.02]*len(images)
         for i in range(len(images)-pause_frames, len(images)):
             durations[i] = 0.2  # Augmenter la durée des frames de pause
-        imageio.mimsave(buf_gif, frames, format='GIF', duration=durations)
+        imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)  # loop=0 pour boucle infinie
         st.success("GIF créé avec succès.")
     except Exception as e:
         st.error(f"Erreur lors de la création du GIF : {e}")
