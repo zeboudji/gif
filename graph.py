@@ -14,7 +14,7 @@ sns.set_palette('Spectral')
 # Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
-    chart_types = ["Barres horizontales", "Barres verticales", "Lignes", "Zones empilées"]
+    chart_types = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
     selected_chart_types = chart_type_selection
     for chart_type in selected_chart_types:
         gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
@@ -40,11 +40,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         if growth is not None:
             growth = growth[::-1]
 
-    # Si plusieurs séries de données sont fournies
-    multiple_series = isinstance(values[0], list)
-
     # Choisir une palette de couleurs moderne
-    palette = sns.color_palette("Spectral", len(labels) if not multiple_series else len(values))
+    palette = sns.color_palette("Spectral", len(labels))
 
     images = []
 
@@ -65,173 +62,121 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     ax.title.set_color('white')
 
     # Fixer les limites des axes pour éviter les sauts
-    if multiple_series:
-        max_value = max([max(v) for v in values]) * 1.1 if values else 1
-    else:
-        max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
+    max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
 
     if chart_type == "Barres horizontales":
         ax.set_xlim(0, max_value)
         ax.set_ylim(-0.5, len(labels) - 0.5)
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        if multiple_series:
-            bars = []
-            for idx, series in enumerate(values):
-                bar = ax.barh(labels, [0]*len(series), color=palette[idx], edgecolor='white', label=f"Série {idx+1}")
-                bars.append(bar)
+        if growth is not None:
+            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
-            if growth is not None:
-                bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-                bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
-            else:
-                bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
+            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         plt.xticks(rotation=45, ha='right', color='white')
-        if multiple_series:
-            bars = []
-            for idx, series in enumerate(values):
-                bar = ax.bar(labels, [0]*len(series), color=palette[idx], edgecolor='white', label=f"Série {idx+1}")
-                bars.append(bar)
+        if growth is not None:
+            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
-            if growth is not None:
-                bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-                bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
-            else:
-                bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
+            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
-        if multiple_series:
-            lines = []
-            value_texts_list = []
-            for idx, series in enumerate(values):
-                line, = ax.plot([], [], color=palette[idx], marker='o', linewidth=2, label=f"Série {idx+1}")
-                lines.append(line)
-                # Préparer les textes pour les valeurs de cette série
-                value_texts = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
-                value_texts_list.append(value_texts)
-        else:
-            line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
-            if growth is not None:
-                line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
-            # Préparer les textes pour les valeurs
-            value_texts = [ax.text(x, 0, '', fontsize=10, fontweight='bold', color='white') for x in range(len(labels))]
-    elif chart_type == "Zones empilées":
-        ax.set_ylim(0, max_value)
-        ax.set_xlim(-0.5, len(labels) - 0.5)
-        ax.set_ylabel("Valeurs cumulées", fontsize=12, fontweight='bold', color='white')
-        ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
-        plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
+        line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
+        if growth is not None:
+            line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
+        # Préparer les textes pour les valeurs
+        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
+        if growth is not None:
+            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
+    elif chart_type == "Camembert":
+        # Pas d'axes pour un camembert
+        ax.axis('equal')
+        ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+        plt.tight_layout()
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
 
-    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
-    if growth is not None or multiple_series:
-        ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-    plt.tight_layout()
+    if chart_type != "Camembert":
+        ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+        # Ajouter une légende si growth est utilisé
+        if growth is not None:
+            ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+        # Ajuster les marges
+        plt.tight_layout()
 
     images = []
 
     if chart_type == "Lignes":
-        x_data = np.arange(len(labels))
-        if multiple_series:
-            num_series = len(values)
-            num_frames = 50
-            frames = np.linspace(0, 1, num_frames)
-            for i in frames:
-                for idx, series in enumerate(values):
-                    current_series = [val * i for val in series]
-                    lines[idx].set_data(x_data, current_series)
-                    # Mettre à jour les textes des valeurs pour cette série
-                    value_texts = value_texts_list[idx]
-                    for txt in value_texts:
-                        txt.set_text('')
-                    if current_series:
-                        # Afficher la valeur actuelle au dernier point
-                        txt = value_texts[-1]
-                        txt.set_position((x_data[-1], current_series[-1]))
-                        txt.set_text(f"{int(current_series[-1])}")
-                        txt.set_fontsize(10)
-                        txt.set_fontweight('bold')
-                        txt.set_color('white')
-                # Enregistrer l'image dans un buffer
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-                buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
-                images.append(image)
-                buf.close()
-        else:
-            y_values = np.array(values)
+        x_data = np.arange(len(values))
+        y_values = np.array(values)
+        if growth is not None:
+            y_growth = np.array(growth)
+
+        # Nombre de frames pour l'animation
+        frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
+        num_segments = len(values) - 1
+        num_frames = frames_per_segment * num_segments
+
+        for frame in range(num_frames):
+            # Déterminer le segment actuel
+            segment = frame // frames_per_segment
+            progress = (frame % frames_per_segment) / frames_per_segment
+
+            # Construire les données jusqu'au point actuel
+            current_x = x_data[:segment+1].tolist()
+            current_y_values = y_values[:segment+1].tolist()
+
+            if segment < num_segments:
+                # Interpoler le point suivant
+                next_x = x_data[segment] + progress * (x_data[segment+1] - x_data[segment])
+                next_y_values = y_values[segment] + progress * (y_values[segment+1] - y_values[segment])
+                current_x.append(next_x)
+                current_y_values.append(next_y_values)
+
+            line_values.set_data(current_x, current_y_values)
+
             if growth is not None:
-                y_growth = np.array(growth)
-
-            frames_per_segment = 30
-            num_segments = len(values) - 1
-            num_frames = frames_per_segment * num_segments
-
-            for frame in range(num_frames):
-                segment = frame // frames_per_segment
-                progress = (frame % frames_per_segment) / frames_per_segment
-
-                current_x = x_data[:segment+1].tolist()
-                current_y_values = y_values[:segment+1].tolist()
-
+                current_y_growth = y_growth[:segment+1].tolist()
                 if segment < num_segments:
-                    next_x = x_data[segment] + progress * (x_data[segment+1] - x_data[segment])
-                    next_y_values = y_values[segment] + progress * (y_values[segment+1] - y_values[segment])
-                    current_x.append(next_x)
-                    current_y_values.append(next_y_values)
+                    next_y_growth = y_growth[segment] + progress * (y_growth[segment+1] - y_growth[segment])
+                    current_y_growth.append(next_y_growth)
+                line_growth.set_data(current_x, current_y_growth)
 
-                line_values.set_data(current_x, current_y_values)
-
-                if growth is not None:
-                    current_y_growth = y_growth[:segment+1].tolist()
-                    if segment < num_segments:
-                        next_y_growth = y_growth[segment] + progress * (y_growth[segment+1] - y_growth[segment])
-                        current_y_growth.append(next_y_growth)
-                    line_growth.set_data(current_x, current_y_growth)
-
-                # Mettre à jour les textes des valeurs
-                for txt in value_texts:
+            # Mettre à jour les textes des valeurs
+            # Effacer les textes précédents
+            for txt in value_texts_values:
+                txt.set_text('')
+            if growth is not None:
+                for txt in value_texts_growth:
                     txt.set_text('')
-                if current_x:
-                    txt = value_texts[segment]
-                    txt.set_position((current_x[-1], current_y_values[-1]))
-                    txt.set_text(f"{int(current_y_values[-1])}")
-                    txt.set_fontsize(10)
-                    txt.set_fontweight('bold')
-                    txt.set_color('white')
 
-                # Enregistrer l'image dans un buffer
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-                buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
-                images.append(image)
-                buf.close()
-    elif chart_type == "Zones empilées":
-        if not multiple_series:
-            st.error("Le graphique des zones empilées nécessite plusieurs séries de données.")
-            return None
-        num_frames = 50
-        frames = np.linspace(0, 1, num_frames)
-        for i in frames:
-            cumulative_data = np.zeros(len(labels))
-            fill_collections = []
-            for idx, series in enumerate(values):
-                current_series = [val * i for val in series]
-                collection = ax.fill_between(range(len(labels)), cumulative_data, cumulative_data + current_series, color=palette[idx], alpha=0.7)
-                cumulative_data += current_series
-                fill_collections.append(collection)
-            ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+            if current_x:
+                # Afficher la valeur actuelle au dernier point pour 'Valeurs'
+                txt = value_texts_values[segment]
+                txt.set_position((current_x[-1], current_y_values[-1]))
+                txt.set_text(f"{int(current_y_values[-1])}")
+                txt.set_fontsize(10)
+                txt.set_fontweight('bold')
+                txt.set_color('#88C0D0')
+
+                # Afficher la valeur actuelle au dernier point pour 'Croissance' si elle existe
+                if growth is not None:
+                    txt_growth = value_texts_growth[segment]
+                    txt_growth.set_position((current_x[-1], current_y_growth[-1]))
+                    txt_growth.set_text(f"{int(current_y_growth[-1])}")
+                    txt_growth.set_fontsize(10)
+                    txt_growth.set_fontweight('bold')
+                    txt_growth.set_color('#D08770')
+
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
@@ -239,76 +184,107 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
-            # Supprimer les collections de remplissage
-            while fill_collections:
-                collection = fill_collections.pop()
-                collection.remove()
+    elif chart_type == "Camembert":
+        # Nombre de frames pour l'animation
+        num_frames = 50  # Plus de frames pour une animation fluide
+        frames = np.linspace(0.01, 1, num_frames)
+
+        # Calculer les angles pour chaque valeur
+        total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
+        fractions_values = [v / total for v in values]
+        if growth is not None:
+            fractions_growth = [g / total for g in growth]
+            combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
+        else:
+            combined_fractions = fractions_values
+
+        for i in frames:
+            current_fractions = [fraction * i for fraction in combined_fractions]
+
+            # Vérifier que la somme des fractions est supérieure à zéro
+            if sum(current_fractions) > 0:
+                # Mettre à jour le camembert
+                ax.clear()
+                # Appliquer un fond moderne
+                fig.patch.set_facecolor('#2E3440')
+                ax.set_facecolor('#3B4252')
+                ax.axis('equal')
+                ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+
+                # Dessiner le camembert avec les fractions actuelles
+                patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
+                # Changer la couleur des textes
+                for text in texts:
+                    text.set_color('white')
+
+                # Ajouter une légende si growth est utilisé
+                if growth is not None:
+                    ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
+                # Enregistrer l'image dans un buffer
+                buf = BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+                buf.seek(0)
+                image = Image.open(buf).convert('RGBA')
+                images.append(image)
+                buf.close()
+            else:
+                # Si la somme est nulle, on saute le dessin du camembert pour cette frame
+                continue
     else:
         # Pour les graphiques à barres
-        num_frames = 50
+        # Nombre de frames pour l'animation
+        num_frames = 50  # Augmenter pour une animation plus fluide
         frames = np.linspace(0, 1, num_frames)
-        if multiple_series:
-            for i in frames:
-                for idx, series in enumerate(values):
-                    current_values = [val * i for val in series]
-                    if chart_type == "Barres horizontales":
-                        for bar, val in zip(bars[idx], current_values):
-                            bar.set_width(val)
-                    elif chart_type == "Barres verticales":
-                        for bar, val in zip(bars[idx], current_values):
-                            bar.set_height(val)
-                # Enregistrer l'image dans un buffer
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-                buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
-                images.append(image)
-                buf.close()
-        else:
-            value_texts = []
-            for _ in labels:
-                value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                           color='white',
-                                           bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-            for i in frames:
-                current_values = [val * i for val in values]
+        # Préparer les textes pour les valeurs
+        value_texts = []
+        for _ in labels:
+            value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                       color='white',
+                                       bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
+        for i in frames:
+            current_values = [val * i for val in values]
+            if growth is not None:
+                current_growth = [g * i for g in growth]
+
+            if chart_type == "Barres horizontales":
+                # Mettre à jour les largeurs des barres
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                    bar_value.set_width(val)
                 if growth is not None:
-                    current_growth = [g * i for g in growth]
-
-                if chart_type == "Barres horizontales":
-                    for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
-                        bar_value.set_width(val)
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                        bar_growth.set_width(gro)
+                        bar_growth.set_x(val)
+                # Mettre à jour les positions des valeurs
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                    total_width = bar_value.get_width()
                     if growth is not None:
-                        for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
-                            bar_growth.set_width(gro)
-                            bar_growth.set_x(val)
-                    for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
-                        total_width = bar_value.get_width()
-                        if growth is not None:
-                            total_width += bars_growth[idx].get_width()
-                        text.set_position((total_width + max_value*0.01, bar_value.get_y() + bar_value.get_height()/2))
-                        text.set_text(f"{int(total_width)}")
-                elif chart_type == "Barres verticales":
-                    for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
-                        bar_value.set_height(val)
+                        total_width += bars_growth[idx].get_width()
+                    text.set_position((total_width + max_value*0.01, bar_value.get_y() + bar_value.get_height()/2))
+                    text.set_text(f"{int(total_width)}")
+            elif chart_type == "Barres verticales":
+                # Mettre à jour les hauteurs des barres
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                    bar_value.set_height(val)
+                if growth is not None:
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                        bar_growth.set_height(gro)
+                        bar_growth.set_y(val)
+                # Mettre à jour les positions des valeurs
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                    total_height = bar_value.get_height()
                     if growth is not None:
-                        for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
-                            bar_growth.set_height(gro)
-                            bar_growth.set_y(val)
-                    for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
-                        total_height = bar_value.get_height()
-                        if growth is not None:
-                            total_height += bars_growth[idx].get_height()
-                        text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
-                        text.set_text(f"{int(total_height)}")
+                        total_height += bars_growth[idx].get_height()
+                    text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
+                    text.set_text(f"{int(total_height)}")
 
-                # Enregistrer l'image dans un buffer
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-                buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
-                images.append(image)
-                buf.close()
+            # Enregistrer l'image dans un buffer
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+            buf.seek(0)
+            image = Image.open(buf).convert('RGBA')
+            images.append(image)
+            buf.close()
 
     if not images:
         st.error("Aucune image n'a été générée pour le graphique {}.".format(chart_type))
@@ -340,7 +316,7 @@ Ce GIF animé montre la progression des données que vous avez fournies.
     * Barres horizontales
     * Barres verticales
     * Lignes
-    * Zones empilées
+    * Camembert
 
 Vous pouvez choisir de générer un ou plusieurs types de graphiques simultanément.
 
@@ -381,16 +357,9 @@ if uploaded_file is not None:
             else:
                 growth_col = None
 
-            # Optionnelle : sélection de plusieurs colonnes pour les graphiques en lignes et zones empilées
-            multi_series_option = st.checkbox("Sélectionner plusieurs colonnes pour les graphiques en lignes et zones empilées")
-            if multi_series_option:
-                value_cols = st.multiselect("Sélectionnez les colonnes pour les valeurs numériques", columns)
-            else:
-                value_cols = [value_col]
-
             # Sélection du type de graphique
             st.subheader("Sélectionnez le(s) type(s) de graphique")
-            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Zones empilées"]
+            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
             chart_type_selection = st.multiselect("Sélectionnez le(s) type(s) de graphique", chart_type_options, default=chart_type_options)
 
             # Ajuster la durée de l'animation
@@ -400,41 +369,34 @@ if uploaded_file is not None:
             # Bouton pour générer les graphiques
             if st.button("Générer les graphiques"):
                 # Extraire les données
-                labels = df[label_col].astype(str).tolist()
-                data_values = []
+                labels = df[label_col].astype(str)
+                values = df[value_col]
 
-                for col in value_cols:
-                    values = df[col]
-                    # Convertir en float et gérer les erreurs
-                    values = pd.to_numeric(values, errors='coerce')
-                    data_values.append(values.tolist())
+                # Nettoyer les données en supprimant les lignes avec des valeurs manquantes ou non numériques
+                data = pd.DataFrame({label_col: labels, value_col: values})
 
-                # Nettoyer les données en supprimant les lignes avec des valeurs manquantes
-                data = pd.DataFrame({label_col: labels})
-                for idx, col in enumerate(value_cols):
-                    data[col] = data_values[idx]
-
+                # Si growth_col est sélectionné
                 if growth_col:
                     growth = df[growth_col]
                     data[growth_col] = growth
-                    data[growth_col] = pd.to_numeric(data[growth_col], errors='coerce')
                 else:
                     growth = None
 
+                # Convertir les colonnes numériques en float, coercer les erreurs et supprimer les NaN
+                data[value_col] = pd.to_numeric(data[value_col], errors='coerce')
+                if growth_col:
+                    data[growth_col] = pd.to_numeric(data[growth_col], errors='coerce')
+
+                # Supprimer les lignes avec des valeurs manquantes
                 data = data.dropna()
 
                 # Mettre à jour les listes après nettoyage
                 labels = data[label_col].tolist()
-                if multi_series_option:
-                    values = []
-                    for col in value_cols:
-                        values.append(data[col].tolist())
+                values = data[value_col].tolist()
+                if growth_col:
+                    growth = data[growth_col].tolist()
                 else:
-                    values = data[value_col].tolist()
-                    if growth_col:
-                        growth = data[growth_col].tolist()
-                    else:
-                        growth = None
+                    growth = None
 
                 # Vérifier que les listes ne sont pas vides
                 if not labels or not values:
