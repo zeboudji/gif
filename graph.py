@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -10,32 +11,13 @@ import matplotlib.patheffects as path_effects  # Import pour les effets de conto
 # Appliquer un style moderne de Seaborn
 sns.set(style="whitegrid")
 
-# Fonction pour créer et enregistrer le GIF animé en mémoire sans boucle
-def create_modern_gif():
-    metiers = [
-        "Ingénieurs de l'informatique",
-        "Infirmiers, sages-femmes",
-        "Aides-soignants",
-        "Cadres commerciaux et technico-commerciaux",
-        "Aides à domicile",
-        "Ouvriers qualifiés de la manutention",
-        "Cadres des services administratifs, comptables et financiers",
-        "Ingénieurs et cadres techniques de l'industrie",
-        "Cadres du bâtiment et des travaux publics",
-        "Ouvriers peu qualifiés de la manutention",
-        "Personnels d'études et de recherche",
-        "Médecins et assimilés",
-        "Techniciens des services administratifs, comptables et financiers",
-        "Techniciens et agents de maîtrise de la maintenance",
-        "Professions paramédicales"
-    ]
-    
-    postes_supplementaires = [110, 95, 80, 75, 70, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15]
-    croissance = [26, 18, 15, 17, 18, 16, 11, 24, 30, 15, 13, 13, 11, 10, 9]
-    
+# Fonction pour créer et enregistrer le GIF animé
+def create_modern_gif(metiers, postes_supplementaires, croissance):
     # Vérifier que les listes ont la même longueur
-    assert len(metiers) == len(postes_supplementaires) == len(croissance), "Les listes doivent avoir la même longueur."
-    
+    if not (len(metiers) == len(postes_supplementaires) == len(croissance)):
+        st.error("Les listes doivent avoir la même longueur.")
+        return None
+
     # Inverser les listes pour que le premier métier soit en bas du graphique
     metiers_reverses = metiers[::-1]
     postes_reverses = postes_supplementaires[::-1]
@@ -131,9 +113,37 @@ st.markdown("""
 Ce GIF animé montre la progression des métiers en forte croissance entre 2019 et 2030.
 * **Nombre de postes supplémentaires** sur l'axe des abscisses (en milliers).
 * **Pourcentage de croissance** affiché à la fin de chaque barre.
+
+Veuillez télécharger un fichier Excel contenant les colonnes suivantes :
+- **Metiers** : les noms des métiers.
+- **Postes_supplementaires** : le nombre de postes supplémentaires (en milliers).
+- **Croissance** : le pourcentage de croissance.
+
+Assurez-vous que les colonnes portent exactement ces noms.
 """)
 
-# Générer et afficher le GIF sans boucle
-gif_buffer = create_modern_gif()
-if gif_buffer:
-    st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
+# Uploader de fichier
+uploaded_file = st.file_uploader("Veuillez télécharger un fichier Excel au format requis.", type=["xlsx", "xls"])
+
+if uploaded_file is not None:
+    # Lire le fichier Excel
+    try:
+        df = pd.read_excel(uploaded_file)
+        # Vérifier que les colonnes nécessaires sont présentes
+        required_columns = ['Metiers', 'Postes_supplementaires', 'Croissance']
+        if not all(column in df.columns for column in required_columns):
+            st.error(f"Le fichier Excel doit contenir les colonnes suivantes: {', '.join(required_columns)}")
+        else:
+            # Extraire les données
+            metiers = df['Metiers'].tolist()
+            postes_supplementaires = df['Postes_supplementaires'].tolist()
+            croissance = df['Croissance'].tolist()
+
+            # Générer et afficher le GIF
+            gif_buffer = create_modern_gif(metiers, postes_supplementaires, croissance)
+            if gif_buffer:
+                st.image(gif_buffer, caption="Métiers en expansion", use_column_width=True)
+    except Exception as e:
+        st.error(f"Erreur lors de la lecture du fichier Excel: {e}")
+else:
+    st.info("Veuillez télécharger un fichier Excel pour générer le graphique animé.")
