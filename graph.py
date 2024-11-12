@@ -13,10 +13,14 @@ sns.set_theme(style='whitegrid')  # Style moderne
 sns.set_palette('Spectral')  # Palette de couleurs modernes
 
 # Fonction pour créer et enregistrer les GIF animés
-def create_animated_charts(labels, values, growth=None, frame_duration=0.15):
+def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
     chart_types = ["Barres horizontales", "Barres verticales", "Lignes"]
-    for chart_type in chart_types:
+    if chart_type_selection == "Tous":
+        selected_chart_types = chart_types
+    else:
+        selected_chart_types = [chart_type_selection]
+    for chart_type in selected_chart_types:
         gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
         charts[chart_type] = gif_buffer
     return charts
@@ -81,6 +85,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
         line, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3)
+        # Préparer les textes pour les valeurs
+        value_texts = [ax.text(x, 0, '', fontsize=10, fontweight='bold', color='white') for x in range(len(labels))]
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -90,13 +96,20 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     # Ajuster les marges
     plt.tight_layout()
 
-    # Préparer les textes pour les labels de croissance
+    # Préparer les textes pour les labels de croissance ou les valeurs
     if growth is not None and chart_type != "Lignes":
         texts = []
         for _ in labels:
             texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
                                  color='white',
                                  bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
+    elif chart_type != "Lignes":
+        # Pour afficher les valeurs qui s'incrémentent
+        value_texts = []
+        for _ in labels:
+            value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                       color='white',
+                                       bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
 
     images = []
 
@@ -127,6 +140,18 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             line.set_data(current_x, current_y)
 
+            # Mettre à jour les textes des valeurs
+            for txt in value_texts:
+                txt.set_text('')
+            if current_x:
+                # Afficher la valeur actuelle au dernier point
+                txt = value_texts[segment]
+                txt.set_position((current_x[-1], current_y[-1]))
+                txt.set_text(f"{int(current_y[-1])}")
+                txt.set_fontsize(10)
+                txt.set_fontweight('bold')
+                txt.set_color('white')
+
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
@@ -145,22 +170,32 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 # Mettre à jour les largeurs des barres
                 for bar, val in zip(bars, current_values):
                     bar.set_width(val)
-                # Mettre à jour les positions des labels de croissance
+                # Mettre à jour les positions des labels de croissance ou des valeurs
                 if growth is not None:
                     for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                         perc_display = f"{int(perc * i)}%"
                         text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
                         text.set_text(perc_display)
+                else:
+                    for idx, (text, bar, val) in enumerate(zip(value_texts, bars, current_values)):
+                        value_display = f"{int(val)}"
+                        text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
+                        text.set_text(value_display)
             elif chart_type == "Barres verticales":
                 # Mettre à jour les hauteurs des barres
                 for bar, val in zip(bars, current_values):
                     bar.set_height(val)
-                # Mettre à jour les positions des labels de croissance
+                # Mettre à jour les positions des labels de croissance ou des valeurs
                 if growth is not None:
                     for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                         perc_display = f"{int(perc * i)}%"
                         text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
                         text.set_text(perc_display)
+                else:
+                    for idx, (text, bar, val) in enumerate(zip(value_texts, bars, current_values)):
+                        value_display = f"{int(val)}"
+                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
+                        text.set_text(value_display)
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
@@ -236,6 +271,11 @@ if uploaded_file is not None:
             else:
                 growth_col = None
 
+            # Sélection du type de graphique
+            st.subheader("Sélectionnez le type de graphique")
+            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Tous"]
+            chart_type_selection = st.selectbox("Type de graphique", chart_type_options)
+
             # Ajuster la durée de l'animation
             st.subheader("Ajustez la vitesse de l'animation")
             frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=1.0, value=0.1, step=0.05)
@@ -276,16 +316,19 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
-                    # Générer les GIFs pour les trois types de graphiques
-                    charts = create_animated_charts(labels, values, growth, frame_duration)
+                    # Générer les GIFs pour les types de graphiques sélectionnés
+                    charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
 
-                    # Afficher les graphiques en matrice
+                    # Afficher les graphiques
                     st.subheader("Graphiques animés")
-                    cols = st.columns(3)
-                    chart_types = ["Barres horizontales", "Barres verticales", "Lignes"]
-                    for col, chart_type in zip(cols, chart_types):
-                        with col:
-                            st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
+                    if chart_type_selection == "Tous":
+                        cols = st.columns(3)
+                        chart_types = ["Barres horizontales", "Barres verticales", "Lignes"]
+                        for col, chart_type in zip(cols, chart_types):
+                            with col:
+                                st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
+                    else:
+                        st.image(charts[chart_type_selection], caption=f"Graphique {chart_type_selection}", use_column_width=True)
     except Exception as e:
         st.error(f"Erreur lors de la lecture du fichier : {e}")
 else:
