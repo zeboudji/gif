@@ -128,7 +128,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
-    durations = [0.05] * len(images)
+    durations = [0.20] * len(images)
     durations[-1] += pause_duration  # Augmenter la durée de la dernière frame
 
     plt.close(fig)
