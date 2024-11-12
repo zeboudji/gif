@@ -9,12 +9,10 @@ import seaborn as sns
 
 # Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
-sns.set_palette('Spectral')
 
 # Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
-    chart_types = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
     selected_chart_types = chart_type_selection
     for chart_type in selected_chart_types:
         gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
@@ -33,6 +31,17 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("La liste de croissance doit avoir la même longueur que les labels.")
         return None
 
+    # Vérifier qu'il n'y a pas de valeurs manquantes
+    if any(pd.isnull(labels)) or any(pd.isnull(values)) or (growth is not None and any(pd.isnull(growth))):
+        st.error("Les données ne doivent pas contenir de valeurs manquantes.")
+        return None
+
+    # Vérifier qu'il n'y a pas de valeurs négatives ou nulles pour le camembert
+    if chart_type == "Camembert":
+        if any(v <= 0 for v in values) or (growth is not None and any(g <= 0 for g in growth)):
+            st.error("Les valeurs pour le graphique camembert doivent être strictement positives.")
+            return None
+
     # Inverser les listes pour les barres horizontales
     if chart_type == "Barres horizontales":
         labels = labels[::-1]
@@ -41,7 +50,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             growth = growth[::-1]
 
     # Choisir une palette de couleurs moderne
-    palette = sns.color_palette("Spectral", len(labels))
+    num_colors = len(labels)
+    palette = sns.color_palette("Spectral", num_colors)
 
     images = []
 
@@ -97,6 +107,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         if growth is not None:
             value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
     elif chart_type == "Camembert":
+        # Vérifier que les longueurs sont cohérentes
+        if not (len(values) == len(labels) == len(palette)):
+            st.error("Les longueurs des valeurs, des labels et de la palette doivent être identiques.")
+            return None
         # Pas d'axes pour un camembert
         ax.axis('equal')
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
@@ -185,52 +199,61 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             images.append(image)
             buf.close()
     elif chart_type == "Camembert":
-        # Nombre de frames pour l'animation
-        num_frames = 50  # Plus de frames pour une animation fluide
-        frames = np.linspace(0.01, 1, num_frames)
+        try:
+            # Vérifier que la somme totale est supérieure à zéro
+            total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
+            if total <= 0:
+                st.error("La somme des valeurs pour le graphique camembert doit être supérieure à zéro.")
+                return None
 
-        # Calculer les angles pour chaque valeur
-        total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
-        fractions_values = [v / total for v in values]
-        if growth is not None:
-            fractions_growth = [g / total for g in growth]
-            combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
-        else:
-            combined_fractions = fractions_values
+            # Nombre de frames pour l'animation
+            num_frames = 50  # Plus de frames pour une animation fluide
+            frames = np.linspace(0.01, 1, num_frames)
 
-        for i in frames:
-            current_fractions = [fraction * i for fraction in combined_fractions]
-
-            # Vérifier que la somme des fractions est supérieure à zéro
-            if sum(current_fractions) > 0:
-                # Mettre à jour le camembert
-                ax.clear()
-                # Appliquer un fond moderne
-                fig.patch.set_facecolor('#2E3440')
-                ax.set_facecolor('#3B4252')
-                ax.axis('equal')
-                ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
-
-                # Dessiner le camembert avec les fractions actuelles
-                patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
-                # Changer la couleur des textes
-                for text in texts:
-                    text.set_color('white')
-
-                # Ajouter une légende si growth est utilisé
-                if growth is not None:
-                    ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-
-                # Enregistrer l'image dans un buffer
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-                buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
-                images.append(image)
-                buf.close()
+            # Calculer les fractions pour chaque valeur
+            fractions_values = [v / total for v in values]
+            if growth is not None:
+                fractions_growth = [g / total for g in growth]
+                combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
             else:
-                # Si la somme est nulle, on saute le dessin du camembert pour cette frame
-                continue
+                combined_fractions = fractions_values
+
+            for i in frames:
+                current_fractions = [fraction * i for fraction in combined_fractions]
+
+                # Vérifier que la somme des fractions est supérieure à zéro
+                if sum(current_fractions) > 0:
+                    # Mettre à jour le camembert
+                    ax.clear()
+                    # Appliquer un fond moderne
+                    fig.patch.set_facecolor('#2E3440')
+                    ax.set_facecolor('#3B4252')
+                    ax.axis('equal')
+                    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+
+                    # Dessiner le camembert avec les fractions actuelles
+                    patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
+                    # Changer la couleur des textes
+                    for text in texts:
+                        text.set_color('white')
+
+                    # Ajouter une légende si growth est utilisé
+                    if growth is not None:
+                        ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
+                    # Enregistrer l'image dans un buffer
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+                    buf.seek(0)
+                    image = Image.open(buf).convert('RGBA')
+                    images.append(image)
+                    buf.close()
+                else:
+                    # Si la somme est nulle, on saute le dessin du camembert pour cette frame
+                    continue
+        except Exception as e:
+            st.error(f"Erreur lors de la création du graphique camembert : {e}")
+            return None
     else:
         # Pour les graphiques à barres
         # Nombre de frames pour l'animation
@@ -403,7 +426,11 @@ if uploaded_file is not None:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
                     # Générer les GIFs pour les types de graphiques sélectionnés
-                    charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                    try:
+                        charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                    except Exception as e:
+                        st.error(f"Erreur lors de la création des graphiques : {e}")
+                        charts = None
 
                     # Afficher les graphiques
                     st.subheader("Graphiques animés")
@@ -418,6 +445,6 @@ if uploaded_file is not None:
                     else:
                         st.error("Aucun graphique n'a pu être généré avec les données fournies.")
     except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier : {e}")
+        st.error(f"Erreur lors du traitement du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
