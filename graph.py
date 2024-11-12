@@ -58,6 +58,14 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
         return None
 
+    # Ajouter des messages de débogage
+    st.write(f"Création du graphique: {chart_type}")
+    st.write(f"Nombre de labels: {len(labels)}")
+    st.write(f"Nombre de valeurs: {len(values)}")
+    if growth is not None:
+        st.write(f"Nombre de valeurs de croissance: {len(growth)}")
+    st.write(f"Nombre de couleurs dans la palette: {len(palette)}")
+
     images = []
 
     # Création de la figure et des axes en dehors de la boucle
@@ -233,7 +241,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     for text in texts:
                         text.set_color('white')
 
-                    # Ajouter une légende si growth est utilisé (bien que nous l'ignorons ici)
+                    # Ajouter une légende si growth est utilisé (bien que nous l'ignorions ici)
                     if growth is not None:
                         ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
