@@ -15,7 +15,7 @@ sns.set_palette('Spectral')  # Palette de couleurs modernes
 # Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
-    chart_types = ["Barres horizontales", "Barres verticales", "Lignes"]
+    chart_types = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
     if chart_type_selection == "Tous":
         selected_chart_types = chart_types
     else:
@@ -87,6 +87,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         line, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3)
         # Préparer les textes pour les valeurs
         value_texts = [ax.text(x, 0, '', fontsize=10, fontweight='bold', color='white') for x in range(len(labels))]
+    elif chart_type == "Camembert":
+        # Pas d'axes pour un camembert
+        plt.axis('equal')
+        # Pas besoin de personnaliser les axes
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -95,21 +99,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Ajuster les marges
     plt.tight_layout()
-
-    # Préparer les textes pour les labels de croissance ou les valeurs
-    if growth is not None and chart_type != "Lignes":
-        texts = []
-        for _ in labels:
-            texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                 color='white',
-                                 bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-    elif chart_type != "Lignes":
-        # Pour afficher les valeurs qui s'incrémentent
-        value_texts = []
-        for _ in labels:
-            value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                       color='white',
-                                       bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
 
     images = []
 
@@ -159,10 +148,56 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
+    elif chart_type == "Camembert":
+        # Nombre de frames pour l'animation
+        num_frames = 50  # Plus de frames pour une animation fluide
+        frames = np.linspace(0, 1, num_frames)
+
+        # Calculer les angles pour chaque valeur
+        total = sum(values)
+        fractions = [v / total for v in values]
+
+        for i in frames:
+            current_fractions = [fraction * i for fraction in fractions]
+            # Mettre à jour le camembert
+            ax.clear()
+            # Appliquer un fond moderne
+            fig.patch.set_facecolor('#2E3440')
+            ax.set_facecolor('#3B4252')
+            ax.axis('equal')
+            ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+
+            # Dessiner le camembert avec les fractions actuelles
+            patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
+            # Changer la couleur des textes
+            for text in texts:
+                text.set_color('white')
+
+            # Enregistrer l'image dans un buffer
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+            buf.seek(0)
+            image = Image.open(buf).convert('RGBA')
+            images.append(image)
+            buf.close()
     else:
+        # Pour les graphiques à barres
         # Nombre de frames pour l'animation
         num_frames = 50  # Augmenter pour une animation plus fluide
         frames = np.linspace(0, 1, num_frames)
+        if growth is not None and chart_type != "Lignes":
+            texts = []
+            for _ in labels:
+                texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                     color='white',
+                                     bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
+        elif chart_type != "Lignes":
+            # Pour afficher les valeurs qui s'incrémentent
+            value_texts = []
+            for _ in labels:
+                value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                           color='white',
+                                           bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
         for i in frames:
             current_values = [val * i for val in values]
 
@@ -231,6 +266,7 @@ Ce GIF animé montre la progression des données que vous avez fournies.
     * Barres horizontales
     * Barres verticales
     * Lignes
+    * Camembert
 
 Vous pouvez choisir de générer un ou plusieurs types de graphiques simultanément.
 
@@ -273,7 +309,7 @@ if uploaded_file is not None:
 
             # Sélection du type de graphique
             st.subheader("Sélectionnez le type de graphique")
-            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Tous"]
+            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert", "Tous"]
             chart_type_selection = st.selectbox("Type de graphique", chart_type_options)
 
             # Ajuster la durée de l'animation
@@ -322,11 +358,14 @@ if uploaded_file is not None:
                     # Afficher les graphiques
                     st.subheader("Graphiques animés")
                     if chart_type_selection == "Tous":
-                        cols = st.columns(3)
-                        chart_types = ["Barres horizontales", "Barres verticales", "Lignes"]
-                        for col, chart_type in zip(cols, chart_types):
-                            with col:
-                                st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
+                        chart_types = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
+                        cols_per_row = 2  # Nombre de colonnes par ligne
+                        rows = [chart_types[i:i + cols_per_row] for i in range(0, len(chart_types), cols_per_row)]
+                        for row in rows:
+                            cols = st.columns(len(row))
+                            for col, chart_type in zip(cols, row):
+                                with col:
+                                    st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
                     else:
                         st.image(charts[chart_type_selection], caption=f"Graphique {chart_type_selection}", use_column_width=True)
     except Exception as e:
