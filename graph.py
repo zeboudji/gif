@@ -8,8 +8,8 @@ import imageio
 import seaborn as sns
 
 # Appliquer un style moderne avec Seaborn
-sns.set_style('whitegrid')  # Style moderne
-sns.set_palette('viridis')  # Palette de couleurs modernes
+sns.set_theme(style='whitegrid')  # Style moderne
+sns.set_palette('Spectral')  # Palette de couleurs modernes
 
 # Fonction pour créer et enregistrer le GIF animé
 def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales"):
@@ -30,36 +30,38 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             growth = growth[::-1]
 
     # Choisir une palette de couleurs moderne
-    palette = sns.color_palette("viridis", len(labels))
+    palette = sns.color_palette("Spectral", len(labels))
 
     images = []
 
     # Création de la figure et des axes en dehors de la boucle
-    fig, ax = plt.subplots(figsize=(14, 10))
+    fig, ax = plt.subplots(figsize=(12, 8))
 
     # Fixer les limites des axes pour éviter les sauts
+    max_value = max(values) * 1.1 if values else 1
+
     if chart_type == "Barres horizontales":
-        ax.set_xlim(0, max(values) * 1.1 if values else 1)
+        ax.set_xlim(0, max_value)
         ax.set_ylim(-0.5, len(labels) - 0.5)
         ax.set_xlabel("Valeurs", fontsize=14, fontweight='bold')
-        bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
+        bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
-        ax.set_ylim(0, max(values) * 1.1 if values else 1)
+        ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(rotation=45, ha='right')
-        bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
+        bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
-        ax.set_ylim(0, max(values) * 1.1 if values else 1)
+        ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
-        line, = ax.plot([], [], color='blue', marker='o', linewidth=2)
+        line, = ax.plot([], [], color='#2A9D8F', marker='o', linewidth=3)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
 
-    ax.set_title("Graphique animé des données fournies", fontsize=18, fontweight='bold')
+    ax.set_title("Graphique animé des données fournies", fontsize=20, fontweight='bold')
 
     # Ajuster les marges
     plt.tight_layout()
@@ -75,7 +77,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     images = []
 
     # Nombre de frames pour l'animation
-    frames = np.linspace(0, 1, 50)  # Plus de frames pour une animation fluide
+    num_frames = 100  # Plus de frames pour une animation fluide
+    frames = np.linspace(0, 1, num_frames)
+
     for i in frames:
         current_values = [val * i for val in values]
 
@@ -87,7 +91,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                     perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_width() + (max(values)*0.01 if values else 0), bar.get_y() + bar.get_height()/2))
+                    text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
                     text.set_text(perc_display)
         elif chart_type == "Barres verticales":
             # Mettre à jour les hauteurs des barres
@@ -97,31 +101,34 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                     perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + (max(values)*0.01 if values else 0)))
+                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
                     text.set_text(perc_display)
         elif chart_type == "Lignes":
-            # Mettre à jour les données de la ligne
+            # Mettre à jour les données de la ligne avec interpolation
             num_points = int(len(values) * i)
-            if num_points == 0:
-                x_data = []
-                y_data = []
-            else:
+            if num_points < 2:
                 x_data = range(num_points)
                 y_data = values[:num_points]
-            line.set_data(x_data, y_data)
+            else:
+                x_data = np.linspace(0, num_points - 1, num_points)
+                y_data = values[:num_points]
+                # Interpolation pour une animation plus fluide
+                x_interp = np.linspace(0, num_points - 1, num_points * 10)
+                y_interp = np.interp(x_interp, x_data, y_data)
+                line.set_data(x_interp, y_interp)
             # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
 
         # Enregistrer l'image dans un buffer
         buf = BytesIO()
-        plt.savefig(buf, format='PNG', bbox_inches='tight', transparent=False)
+        plt.savefig(buf, format='png', bbox_inches='tight', transparent=False)
         buf.seek(0)
-        image = Image.open(buf).convert('RGB')
+        image = Image.open(buf).convert('RGBA')
         images.append(image)
         buf.close()
 
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
-    durations = [0.1] * len(images)
+    durations = [0.05] * len(images)
     durations[-1] += pause_duration  # Augmenter la durée de la dernière frame
 
     plt.close(fig)
