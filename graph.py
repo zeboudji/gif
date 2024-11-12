@@ -6,7 +6,6 @@ from PIL import Image
 from io import BytesIO
 import imageio
 import seaborn as sns
-import matplotlib.patheffects as path_effects
 
 # Appliquer un style moderne avec Seaborn
 sns.set_style('whitegrid')  # Style moderne
@@ -40,18 +39,18 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Fixer les limites des axes pour éviter les sauts
     if chart_type == "Barres horizontales":
-        ax.set_xlim(0, max(values) * 1.1)
+        ax.set_xlim(0, max(values) * 1.1 if values else 1)
         ax.set_ylim(-0.5, len(labels) - 0.5)
         ax.set_xlabel("Valeurs", fontsize=14, fontweight='bold')
         bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
     elif chart_type == "Barres verticales":
-        ax.set_ylim(0, max(values) * 1.1)
+        ax.set_ylim(0, max(values) * 1.1 if values else 1)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(rotation=45, ha='right')
         bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
     elif chart_type == "Lignes":
-        ax.set_ylim(0, max(values) * 1.1)
+        ax.set_ylim(0, max(values) * 1.1 if values else 1)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
@@ -66,7 +65,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     plt.tight_layout()
 
     # Préparer les textes pour les labels de croissance
-    if growth is not None:
+    if growth is not None and chart_type != "Lignes":
         texts = []
         for _ in labels:
             texts.append(ax.text(0, 0, '', fontsize=12, fontweight='bold',
@@ -88,7 +87,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                     perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2))
+                    text.set_position((bar.get_width() + (max(values)*0.01 if values else 0), bar.get_y() + bar.get_height()/2))
                     text.set_text(perc_display)
         elif chart_type == "Barres verticales":
             # Mettre à jour les hauteurs des barres
@@ -98,7 +97,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
                     perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01))
+                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + (max(values)*0.01 if values else 0)))
                     text.set_text(perc_display)
         elif chart_type == "Lignes":
             # Mettre à jour les données de la ligne
@@ -191,35 +190,44 @@ if uploaded_file is not None:
             # Bouton pour générer le graphique
             if st.button("Générer le graphique"):
                 # Extraire les données
-                labels = df[label_col].astype(str).tolist()
+                labels = df[label_col].astype(str)
                 values = df[value_col]
 
-                # Gérer les valeurs manquantes dans 'values'
-                if values.isnull().any():
-                    st.warning("Des valeurs manquantes ont été trouvées dans la colonne des valeurs numériques. Elles seront remplacées par 0.")
-                    values = values.fillna(0)
-
-                values = values.astype(float).tolist()
+                # Nettoyer les données en supprimant les lignes avec des valeurs manquantes ou non numériques
+                data = pd.DataFrame({label_col: labels, value_col: values})
 
                 # Si growth_col est sélectionné
                 if growth_col:
                     growth = df[growth_col]
-
-                    # Gérer les valeurs manquantes dans 'growth'
-                    if growth.isnull().any():
-                        st.warning("Des valeurs manquantes ont été trouvées dans la colonne de croissance. Elles seront remplacées par 0.")
-                        growth = growth.fillna(0)
-
-                    growth = growth.astype(float).tolist()
+                    data[growth_col] = growth
                 else:
-                    growth = None  # Pas de croissance
+                    growth = None
 
-                # Générer et afficher le GIF
-                gif_buffer = create_animated_chart(labels, values, growth, chart_type)
-                if gif_buffer:
-                    st.image(gif_buffer, caption="Graphique animé", use_column_width=True)
+                # Convertir les colonnes numériques en float, coercer les erreurs et supprimer les NaN
+                data[value_col] = pd.to_numeric(data[value_col], errors='coerce')
+                if growth_col:
+                    data[growth_col] = pd.to_numeric(data[growth_col], errors='coerce')
+
+                # Supprimer les lignes avec des valeurs manquantes
+                data = data.dropna()
+
+                # Mettre à jour les listes après nettoyage
+                labels = data[label_col].tolist()
+                values = data[value_col].tolist()
+                if growth_col:
+                    growth = data[growth_col].tolist()
+                else:
+                    growth = None
+
+                # Vérifier que les listes ne sont pas vides
+                if not labels or not values:
+                    st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
+                else:
+                    # Générer et afficher le GIF
+                    gif_buffer = create_animated_chart(labels, values, growth, chart_type)
+                    if gif_buffer:
+                        st.image(gif_buffer, caption="Graphique animé", use_column_width=True)
     except Exception as e:
         st.error(f"Erreur lors de la lecture du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer le graphique animé.")
-
