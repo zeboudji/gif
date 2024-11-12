@@ -12,7 +12,7 @@ sns.set_theme(style='whitegrid')  # Style moderne
 sns.set_palette('Spectral')  # Palette de couleurs modernes
 
 # Fonction pour créer et enregistrer le GIF animé
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales"):
+def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
@@ -109,6 +109,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if num_points < 2:
                 x_data = range(num_points)
                 y_data = values[:num_points]
+                line.set_data(x_data, y_data)
             else:
                 x_data = np.linspace(0, num_points - 1, num_points)
                 y_data = values[:num_points]
@@ -128,7 +129,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
-    durations = [0.20] * len(images)
+    durations = [frame_duration] * len(images)
     durations[-1] += pause_duration  # Augmenter la durée de la dernière frame
 
     plt.close(fig)
@@ -194,6 +195,10 @@ if uploaded_file is not None:
             st.subheader("Sélectionnez le type de graphique")
             chart_type = st.selectbox("Type de graphique", ["Barres horizontales", "Barres verticales", "Lignes"])
 
+            # Ajuster la durée de l'animation
+            st.subheader("Ajustez la vitesse de l'animation")
+            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=0.5, value=0.15, step=0.05)
+
             # Bouton pour générer le graphique
             if st.button("Générer le graphique"):
                 # Extraire les données
@@ -231,7 +236,7 @@ if uploaded_file is not None:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
                     # Générer et afficher le GIF
-                    gif_buffer = create_animated_chart(labels, values, growth, chart_type)
+                    gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
                     if gif_buffer:
                         st.image(gif_buffer, caption="Graphique animé", use_column_width=True)
     except Exception as e:
