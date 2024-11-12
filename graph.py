@@ -9,7 +9,8 @@ import seaborn as sns
 import matplotlib.patheffects as path_effects
 
 # Appliquer un style moderne
-sns.set(style="whitegrid")
+plt.style.use('seaborn-whitegrid')  # Style moderne
+sns.set_palette('viridis')  # Palette de couleurs modernes
 
 # Fonction pour créer et enregistrer le GIF animé
 def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales"):
@@ -41,20 +42,20 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     if chart_type == "Barres horizontales":
         ax.set_xlim(0, max(values) * 1.1)
         ax.set_ylim(-0.5, len(labels) - 0.5)
-        bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
         ax.set_xlabel("Valeurs", fontsize=14, fontweight='bold')
+        bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
     elif chart_type == "Barres verticales":
         ax.set_ylim(0, max(values) * 1.1)
         ax.set_xlim(-0.5, len(labels) - 0.5)
-        bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
-        plt.xticks(rotation=90)
+        plt.xticks(rotation=45, ha='right')
+        bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', alpha=0.8)
     elif chart_type == "Lignes":
         ax.set_ylim(0, max(values) * 1.1)
         ax.set_xlim(-0.5, len(labels) - 0.5)
-        line, = ax.plot([], [], color='blue', marker='o')
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
-        plt.xticks(range(len(labels)), labels, rotation=90)
+        plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
+        line, = ax.plot([], [], color='blue', marker='o', linewidth=2)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -65,50 +66,52 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     plt.tight_layout()
 
     # Préparer les textes pour les labels de croissance
-    if growth is not None and chart_type != "Lignes":
+    if growth is not None:
         texts = []
         for _ in labels:
             texts.append(ax.text(0, 0, '', fontsize=12, fontweight='bold',
                                  color='black',
                                  bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)))
 
+    images = []
+
     # Nombre de frames pour l'animation
-    num_frames = len(values)
-    for i in range(1, num_frames + 1):
+    frames = np.linspace(0, 1, 50)  # Plus de frames pour une animation fluide
+    for i in frames:
+        current_values = [val * i for val in values]
+
         if chart_type == "Barres horizontales":
-            current_values = values[:i] + [0]*(len(values)-i)
             # Mettre à jour les largeurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_width(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    if idx < i:
-                        perc_display = f"{int(perc)}%"
-                        text.set_position((bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2))
-                        text.set_text(perc_display)
-                    else:
-                        text.set_text('')
+                    perc_display = f"{int(perc * i)}%"
+                    text.set_position((bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2))
+                    text.set_text(perc_display)
         elif chart_type == "Barres verticales":
-            current_values = values[:i] + [0]*(len(values)-i)
             # Mettre à jour les hauteurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_height(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    if idx < i:
-                        perc_display = f"{int(perc)}%"
-                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01))
-                        text.set_text(perc_display)
-                    else:
-                        text.set_text('')
+                    perc_display = f"{int(perc * i)}%"
+                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01))
+                    text.set_text(perc_display)
         elif chart_type == "Lignes":
             # Mettre à jour les données de la ligne
-            x_data = range(i)
-            y_data = values[:i]
+            num_points = int(len(values) * i)
+            if num_points == 0:
+                x_data = []
+                y_data = []
+            else:
+                x_data = range(num_points)
+                y_data = values[:num_points]
             line.set_data(x_data, y_data)
             # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
+
         # Enregistrer l'image dans un buffer
         buf = BytesIO()
         plt.savefig(buf, format='PNG', bbox_inches='tight', transparent=False)
@@ -117,6 +120,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         images.append(image)
         buf.close()
 
+    # Ajouter une pause à la fin de l'animation
+    pause_duration = 2  # Durée de la pause en secondes
+    durations = [0.1] * len(images)
+    durations[-1] += pause_duration  # Augmenter la durée de la dernière frame
+
     plt.close(fig)
 
     # Convertir les images en frames pour le GIF
@@ -124,7 +132,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Créer le GIF
     buf_gif = BytesIO()
-    durations = [0.1] * len(images)
     imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)
     buf_gif.seek(0)
     return buf_gif
@@ -134,8 +141,11 @@ st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide
 st.title("Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
-* **Axe des abscisses** : valeurs numériques.
-* **Pourcentage de croissance** : affiché à la fin de chaque barre si disponible.
+
+* **Types de graphiques disponibles** :
+    * Barres horizontales
+    * Barres verticales
+    * Lignes
 
 Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
