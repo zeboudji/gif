@@ -56,6 +56,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
+        x_data = range(len(values))
         line, = ax.plot([], [], color='#2A9D8F', marker='o', linewidth=3)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
@@ -104,19 +105,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
                     text.set_text(perc_display)
         elif chart_type == "Lignes":
-            # Mettre à jour les données de la ligne avec interpolation
-            num_points = int(len(values) * i)
-            if num_points < 2:
-                x_data = range(num_points)
-                y_data = values[:num_points]
-                line.set_data(x_data, y_data)
-            else:
-                x_data = np.linspace(0, num_points - 1, num_points)
-                y_data = values[:num_points]
-                # Interpolation pour une animation plus fluide
-                x_interp = np.linspace(0, num_points - 1, num_points * 10)
-                y_interp = np.interp(x_interp, x_data, y_data)
-                line.set_data(x_interp, y_interp)
+            # Mettre à jour les données de la ligne
+            y_current = [val * i for val in values]
+            line.set_data(x_data, y_current)
             # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
 
         # Enregistrer l'image dans un buffer
