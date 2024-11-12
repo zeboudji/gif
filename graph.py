@@ -38,7 +38,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Vérifier qu'il n'y a pas de valeurs négatives ou nulles pour le camembert
     if chart_type == "Camembert":
-        if any(v <= 0 for v in values) or (growth is not None and any(g <= 0 for g in growth)):
+        if any(v <= 0 for v in values):
             st.error("Les valeurs pour le graphique camembert doivent être strictement positives.")
             return None
 
@@ -49,7 +49,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         if growth is not None:
             growth = growth[::-1]
 
-    # Choisir une palette de couleurs moderne
+    # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     palette = sns.color_palette("Spectral", num_colors)
 
@@ -103,18 +103,12 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         if growth is not None:
             line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
         # Préparer les textes pour les valeurs
-        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
+        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#88C0D0') for _ in range(len(labels))]
         if growth is not None:
-            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='white') for _ in range(len(labels))]
+            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#D08770') for _ in range(len(labels))]
     elif chart_type == "Camembert":
-        # Vérifier que les longueurs sont cohérentes
-        if not (len(values) == len(labels) == len(palette)):
-            st.error("Les longueurs des valeurs, des labels et de la palette doivent être identiques.")
-            return None
         # Pas d'axes pour un camembert
         ax.axis('equal')
-        ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
-        plt.tight_layout()
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -122,7 +116,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
         # Ajouter une légende si growth est utilisé
-        if growth is not None:
+        if growth is not None and chart_type != "Camembert":
             ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
         # Ajuster les marges
         plt.tight_layout()
@@ -201,7 +195,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     elif chart_type == "Camembert":
         try:
             # Vérifier que la somme totale est supérieure à zéro
-            total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
+            total = sum([v for v in values])
             if total <= 0:
                 st.error("La somme des valeurs pour le graphique camembert doit être supérieure à zéro.")
                 return None
@@ -212,14 +206,12 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Calculer les fractions pour chaque valeur
             fractions_values = [v / total for v in values]
-            if growth is not None:
-                fractions_growth = [g / total for g in growth]
-                combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
-            else:
-                combined_fractions = fractions_values
+
+            # Générer suffisamment de couleurs
+            palette = sns.color_palette("Spectral", len(labels))
 
             for i in frames:
-                current_fractions = [fraction * i for fraction in combined_fractions]
+                current_fractions = [fraction * i for fraction in fractions_values]
 
                 # Vérifier que la somme des fractions est supérieure à zéro
                 if sum(current_fractions) > 0:
@@ -237,7 +229,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     for text in texts:
                         text.set_color('white')
 
-                    # Ajouter une légende si growth est utilisé
+                    # Ajouter une légende si growth est utilisé (bien que nous ignorons growth ici)
                     if growth is not None:
                         ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
@@ -248,9 +240,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
                     buf.close()
-                else:
-                    # Si la somme est nulle, on saute le dessin du camembert pour cette frame
-                    continue
         except Exception as e:
             st.error(f"Erreur lors de la création du graphique camembert : {e}")
             return None
@@ -310,7 +299,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             buf.close()
 
     if not images:
-        st.error("Aucune image n'a été générée pour le graphique {}.".format(chart_type))
+        st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
         return None
 
     # Ajouter une pause à la fin de l'animation
@@ -321,13 +310,17 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     plt.close(fig)
 
     # Convertir les images en frames pour le GIF
-    frames = [np.array(img) for img in images]
+    frames_gif = [np.array(img) for img in images]
 
     # Créer le GIF
-    buf_gif = BytesIO()
-    imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)
-    buf_gif.seek(0)
-    return buf_gif
+    try:
+        buf_gif = BytesIO()
+        imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=durations, loop=0)
+        buf_gif.seek(0)
+        return buf_gif
+    except Exception as e:
+        st.error(f"Erreur lors de la création du GIF : {e}")
+        return None
 
 # Interface Streamlit
 st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide")
@@ -376,18 +369,34 @@ if uploaded_file is not None:
             # Optionnelle : sélection de la colonne pour la troisième dimension
             growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
             if growth_option:
-                growth_col = st.selectbox("Sélectionnez la colonne pour la troisième dimension", columns)
+                # Exclure les colonnes déjà sélectionnées pour éviter les doublons
+                available_growth_cols = [col for col in columns if col != label_col and col != value_col]
+                if available_growth_cols:
+                    growth_col = st.selectbox("Sélectionnez la colonne pour la troisième dimension", available_growth_cols)
+                else:
+                    st.error("Aucune colonne disponible pour la troisième dimension.")
+                    growth_col = None
             else:
                 growth_col = None
 
             # Sélection du type de graphique
             st.subheader("Sélectionnez le(s) type(s) de graphique")
             chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
-            chart_type_selection = st.multiselect("Sélectionnez le(s) type(s) de graphique", chart_type_options, default=chart_type_options)
+            chart_type_selection = st.multiselect(
+                "Sélectionnez le(s) type(s) de graphique",
+                chart_type_options,
+                default=chart_type_options
+            )
 
             # Ajuster la durée de l'animation
             st.subheader("Ajustez la vitesse de l'animation")
-            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=1.0, value=0.1, step=0.05)
+            frame_duration = st.slider(
+                "Durée de chaque frame (en secondes)",
+                min_value=0.05,
+                max_value=1.0,
+                value=0.1,
+                step=0.05
+            )
 
             # Bouton pour générer les graphiques
             if st.button("Générer les graphiques"):
