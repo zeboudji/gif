@@ -36,7 +36,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("Les données ne doivent pas contenir de valeurs manquantes.")
         return None
 
-    # Pour le graphique Camembert, ignorer 'growth'
+    # Pour le graphique Camembert, ignorer 'growth' et avertir l'utilisateur
     if chart_type == "Camembert" and growth is not None:
         st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
@@ -52,6 +52,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     num_colors = len(labels)
     # Utiliser une palette avec suffisamment de couleurs distinctes
     palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
+
+    # Vérifier que la palette a le bon nombre de couleurs
+    if len(palette) != num_colors:
+        st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
+        return None
 
     images = []
 
@@ -207,7 +212,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             fractions_values = [v / total for v in values]
 
             # Générer suffisamment de couleurs
-            palette = sns.color_palette("hls", len(labels))
+            palette = sns.color_palette("hls", len(labels))  # 'hls' peut générer de nombreuses couleurs
 
             for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -432,7 +437,7 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
-                    # Vérifier les longueurs des listes
+                    # Afficher les longueurs des listes pour débogage
                     st.write(f"Nombre de labels : {len(labels)}")
                     st.write(f"Nombre de valeurs : {len(values)}")
                     if growth_col:
