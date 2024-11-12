@@ -23,7 +23,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         return None
 
     # Inverser les listes pour certains types de graphiques
-    if chart_type in ["Barres horizontales", "Lignes"]:
+    if chart_type in ["Barres horizontales"]:
         labels = labels[::-1]
         values = values[::-1]
         if growth is not None:
@@ -52,9 +52,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     elif chart_type == "Lignes":
         ax.set_ylim(0, max(values) * 1.1)
         ax.set_xlim(-0.5, len(labels) - 0.5)
-        line, = ax.plot(labels, [0]*len(values), color='blue', marker='o')
+        line, = ax.plot([], [], color='blue', marker='o')
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
-        plt.xticks(rotation=90)
+        plt.xticks(range(len(labels)), labels, rotation=90)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -65,7 +65,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     plt.tight_layout()
 
     # Préparer les textes pour les labels de croissance
-    if growth is not None:
+    if growth is not None and chart_type != "Lignes":
         texts = []
         for _ in labels:
             texts.append(ax.text(0, 0, '', fontsize=12, fontweight='bold',
@@ -73,39 +73,42 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                                  bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)))
 
     # Nombre de frames pour l'animation
-    for i in range(0, 101, 5):
-        current_values = [val * (i / 100) for val in values]
-
+    num_frames = len(values)
+    for i in range(1, num_frames + 1):
         if chart_type == "Barres horizontales":
-            # Mettre à jour les hauteurs des barres
+            current_values = values[:i] + [0]*(len(values)-i)
+            # Mettre à jour les largeurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_width(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    perc_display = f"{int(perc * (i / 100))}%"
-                    text.set_position((bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2))
-                    text.set_text(perc_display)
+                    if idx < i:
+                        perc_display = f"{int(perc)}%"
+                        text.set_position((bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2))
+                        text.set_text(perc_display)
+                    else:
+                        text.set_text('')
         elif chart_type == "Barres verticales":
+            current_values = values[:i] + [0]*(len(values)-i)
             # Mettre à jour les hauteurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_height(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    perc_display = f"{int(perc * (i / 100))}%"
-                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01))
-                    text.set_text(perc_display)
+                    if idx < i:
+                        perc_display = f"{int(perc)}%"
+                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01))
+                        text.set_text(perc_display)
+                    else:
+                        text.set_text('')
         elif chart_type == "Lignes":
             # Mettre à jour les données de la ligne
-            line.set_ydata(current_values)
-            # Mettre à jour les positions des labels de croissance
-            if growth is not None:
-                for idx, (text, x, y, perc) in enumerate(zip(texts, range(len(labels)), current_values, growth)):
-                    perc_display = f"{int(perc * (i / 100))}%"
-                    text.set_position((x, y + max(values)*0.01))
-                    text.set_text(perc_display)
-
+            x_data = range(i)
+            y_data = values[:i]
+            line.set_data(x_data, y_data)
+            # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
         # Enregistrer l'image dans un buffer
         buf = BytesIO()
         plt.savefig(buf, format='PNG', bbox_inches='tight', transparent=False)
@@ -121,7 +124,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Créer le GIF
     buf_gif = BytesIO()
-    durations = [0.05] * len(images)
+    durations = [0.1] * len(images)
     imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)
     buf_gif.seek(0)
     return buf_gif
