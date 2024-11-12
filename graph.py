@@ -39,93 +39,96 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         plt.clf()
         fig, ax = plt.subplots(figsize=(14, 10))
 
-        current_values = [val * (i / 100) for val in values]
-
-        if chart_type == "Barres horizontales":
-            ax.barh(
-                labels,
-                current_values,
-                color=palette,
-                edgecolor='white',
-                alpha=0.8
-            )
-            ax.set_xlabel("Valeurs", fontsize=14, fontweight='bold')
-        elif chart_type == "Barres verticales":
-            ax.bar(
-                labels,
-                current_values,
-                color=palette,
-                edgecolor='white',
-                alpha=0.8
-            )
-            ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
-            plt.xticks(rotation=90)
-        elif chart_type == "Lignes":
-            ax.plot(
-                labels,
-                current_values,
-                color='blue',
-                marker='o'
-            )
-            ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
-            plt.xticks(rotation=90)
-        elif chart_type == "Camembert":
+        if chart_type == "Camembert":
+            # Faire tourner le camembert
+            start_angle = 90 + i * 3.6  # Tour complet sur 100 frames
             ax.pie(
-                current_values,
+                values,
                 labels=labels,
                 colors=palette,
                 autopct='%1.1f%%',
-                startangle=90
+                startangle=start_angle
             )
             ax.axis('equal')  # Assure que le diagramme est circulaire
+        else:
+            current_values = [val * (i / 100) for val in values]
 
-        ax.set_title("Graphique animé des données fournies", fontsize=18, fontweight='bold')
+            if chart_type == "Barres horizontales":
+                ax.barh(
+                    labels,
+                    current_values,
+                    color=palette,
+                    edgecolor='white',
+                    alpha=0.8
+                )
+                ax.set_xlabel("Valeurs", fontsize=14, fontweight='bold')
+            elif chart_type == "Barres verticales":
+                ax.bar(
+                    labels,
+                    current_values,
+                    color=palette,
+                    edgecolor='white',
+                    alpha=0.8
+                )
+                ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
+                plt.xticks(rotation=90)
+            elif chart_type == "Lignes":
+                ax.plot(
+                    labels,
+                    current_values,
+                    color='blue',
+                    marker='o'
+                )
+                ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
+                plt.xticks(rotation=90)
 
-        # Ajuster les marges
-        plt.tight_layout()
+            ax.set_title("Graphique animé des données fournies", fontsize=18, fontweight='bold')
 
-        # Ajouter les labels de croissance si disponibles et si ce n'est pas un camembert
-        if growth is not None and chart_type != "Camembert":
-            for index, (val, perc_actuel) in enumerate(zip(current_values, [g * (i / 100) for g in growth])):
-                if np.isnan(perc_actuel):
-                    perc_display = ""
-                else:
-                    perc_display = f"{int(perc_actuel)}%"
-                if chart_type == "Barres horizontales":
-                    ax.text(
-                        val + (max(values)*0.01 if values else 0),
-                        index,
-                        perc_display,
-                        va='center',
-                        fontsize=12,
-                        fontweight='bold',
-                        color='black',
-                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
-                    )
-                elif chart_type == "Barres verticales":
-                    ax.text(
-                        index,
-                        val + (max(values)*0.01 if values else 0),
-                        perc_display,
-                        ha='center',
-                        fontsize=12,
-                        fontweight='bold',
-                        color='black',
-                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
-                    )
-                elif chart_type == "Lignes":
-                    ax.text(
-                        index,
-                        val + (max(values)*0.01 if values else 0),
-                        perc_display,
-                        ha='center',
-                        fontsize=12,
-                        fontweight='bold',
-                        color='black',
-                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
-                    )
+            # Ajuster les marges
+            plt.tight_layout()
 
-        # Sauvegarder l'image dans un buffer en mémoire
+            # Ajouter les labels de croissance si disponibles
+            if growth is not None:
+                for index, (val, perc_actuel) in enumerate(zip(current_values, [g * (i / 100) for g in growth])):
+                    if np.isnan(perc_actuel):
+                        perc_display = ""
+                    else:
+                        perc_display = f"{int(perc_actuel)}%"
+                    if chart_type == "Barres horizontales":
+                        ax.text(
+                            val + (max(values)*0.01 if max(values) != 0 else 0),
+                            index,
+                            perc_display,
+                            va='center',
+                            fontsize=12,
+                            fontweight='bold',
+                            color='black',
+                            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
+                        )
+                    elif chart_type == "Barres verticales":
+                        ax.text(
+                            index,
+                            val + (max(values)*0.01 if max(values) != 0 else 0),
+                            perc_display,
+                            ha='center',
+                            fontsize=12,
+                            fontweight='bold',
+                            color='black',
+                            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
+                        )
+                    elif chart_type == "Lignes":
+                        ax.text(
+                            index,
+                            val + (max(values)*0.01 if max(values) != 0 else 0),
+                            perc_display,
+                            ha='center',
+                            fontsize=12,
+                            fontweight='bold',
+                            color='black',
+                            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5)
+                        )
+
+        # Enregistrer l'image dans un buffer
         buf = BytesIO()
         plt.savefig(buf, format='PNG', bbox_inches='tight', transparent=False)
         buf.seek(0)
@@ -134,10 +137,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         buf.close()
         plt.close(fig)
 
-    # Convertir les images PIL en tableaux numpy
+    # Convertir les images en frames pour le GIF
     frames = [np.array(img) for img in images]
 
-    # Créer le GIF avec imageio dans un buffer en mémoire
+    # Créer le GIF
     buf_gif = BytesIO()
     durations = [0.05] * len(images)
     imageio.mimsave(buf_gif, frames, format='GIF', duration=durations, loop=0)
