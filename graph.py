@@ -18,7 +18,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
         return None
 
-    if growth and len(growth) != len(labels):
+    if growth is not None and len(growth) != len(labels):
         st.error("La liste de croissance doit avoir la même longueur que les labels.")
         return None
 
@@ -26,7 +26,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     if chart_type in ["Barres horizontales", "Lignes"]:
         labels = labels[::-1]
         values = values[::-1]
-        if growth:
+        if growth is not None:
             growth = growth[::-1]
 
     # Choisir une palette de couleurs moderne
@@ -84,8 +84,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Ajuster les marges
         plt.tight_layout()
 
-        # Ajouter les labels de croissance si disponibles
-        if growth and chart_type != "Camembert":
+        # Ajouter les labels de croissance si disponibles et si ce n'est pas un camembert
+        if growth is not None and chart_type != "Camembert":
             for index, (val, perc_actuel) in enumerate(zip(current_values, [g * (i / 100) for g in growth])):
                 if np.isnan(perc_actuel):
                     perc_display = ""
