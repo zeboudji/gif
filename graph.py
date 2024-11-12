@@ -2,15 +2,14 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 from io import BytesIO
 import imageio
 import seaborn as sns
-import matplotlib as mpl
 
 # Appliquer un style moderne avec Seaborn
-sns.set_theme(style='whitegrid')  # Style moderne
-sns.set_palette('Spectral')  # Palette de couleurs modernes
+sns.set_theme(style='whitegrid')
+sns.set_palette('Spectral')
 
 # Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
@@ -50,8 +49,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     fig, ax = plt.subplots(figsize=(8, 6))
 
     # Appliquer un fond moderne
-    fig.patch.set_facecolor('#2E3440')  # Couleur de fond de la figure
-    ax.set_facecolor('#3B4252')  # Couleur de fond des axes
+    fig.patch.set_facecolor('#2E3440')
+    ax.set_facecolor('#3B4252')
 
     # Changer la couleur des axes et du texte
     ax.spines['bottom'].set_color('white')
@@ -63,26 +62,36 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     ax.title.set_color('white')
 
     # Fixer les limites des axes pour éviter les sauts
-    max_value = max(values) * 1.1 if values else 1
+    max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
 
     if chart_type == "Barres horizontales":
         ax.set_xlim(0, max_value)
         ax.set_ylim(-0.5, len(labels) - 0.5)
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        bars = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
+        if growth is not None:
+            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+        else:
+            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         plt.xticks(rotation=45, ha='right', color='white')
-        bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
+        if growth is not None:
+            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+        else:
+            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
-        line, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3)
+        line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
+        if growth is not None:
+            line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
         # Préparer les textes pour les valeurs
         value_texts = [ax.text(x, 0, '', fontsize=10, fontweight='bold', color='white') for x in range(len(labels))]
     elif chart_type == "Camembert":
@@ -96,6 +105,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+        # Ajouter une légende si growth est utilisé
+        if growth is not None:
+            ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
         # Ajuster les marges
         plt.tight_layout()
 
@@ -103,7 +115,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     if chart_type == "Lignes":
         x_data = np.arange(len(values))
-        y_data = np.array(values)
+        y_values = np.array(values)
+        if growth is not None:
+            y_growth = np.array(growth)
 
         # Nombre de frames pour l'animation
         frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
@@ -117,16 +131,23 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Construire les données jusqu'au point actuel
             current_x = x_data[:segment+1].tolist()
-            current_y = y_data[:segment+1].tolist()
+            current_y_values = y_values[:segment+1].tolist()
 
             if segment < num_segments:
                 # Interpoler le point suivant
                 next_x = x_data[segment] + progress * (x_data[segment+1] - x_data[segment])
-                next_y = y_data[segment] + progress * (y_data[segment+1] - y_data[segment])
+                next_y_values = y_values[segment] + progress * (y_values[segment+1] - y_values[segment])
                 current_x.append(next_x)
-                current_y.append(next_y)
+                current_y_values.append(next_y_values)
 
-            line.set_data(current_x, current_y)
+            line_values.set_data(current_x, current_y_values)
+
+            if growth is not None:
+                current_y_growth = y_growth[:segment+1].tolist()
+                if segment < num_segments:
+                    next_y_growth = y_growth[segment] + progress * (y_growth[segment+1] - y_growth[segment])
+                    current_y_growth.append(next_y_growth)
+                line_growth.set_data(current_x, current_y_growth)
 
             # Mettre à jour les textes des valeurs
             for txt in value_texts:
@@ -134,8 +155,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if current_x:
                 # Afficher la valeur actuelle au dernier point
                 txt = value_texts[segment]
-                txt.set_position((current_x[-1], current_y[-1]))
-                txt.set_text(f"{int(current_y[-1])}")
+                txt.set_position((current_x[-1], current_y_values[-1]))
+                txt.set_text(f"{int(current_y_values[-1])}")
                 txt.set_fontsize(10)
                 txt.set_fontweight('bold')
                 txt.set_color('white')
@@ -150,14 +171,19 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     elif chart_type == "Camembert":
         # Nombre de frames pour l'animation
         num_frames = 50  # Plus de frames pour une animation fluide
-        frames = np.linspace(0.01, 1, num_frames)  # Commence à 0.01 pour éviter les fractions nulles
+        frames = np.linspace(0.01, 1, num_frames)
 
         # Calculer les angles pour chaque valeur
-        total = sum(values)
-        fractions = [v / total for v in values]
+        total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
+        fractions_values = [v / total for v in values]
+        if growth is not None:
+            fractions_growth = [g / total for g in growth]
+            combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
+        else:
+            combined_fractions = fractions_values
 
         for i in frames:
-            current_fractions = [fraction * i for fraction in fractions]
+            current_fractions = [fraction * i for fraction in combined_fractions]
 
             # Vérifier que la somme des fractions est supérieure à zéro
             if sum(current_fractions) > 0:
@@ -175,6 +201,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 for text in texts:
                     text.set_color('white')
 
+                # Ajouter une légende si growth est utilisé
+                if growth is not None:
+                    ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
                 # Enregistrer l'image dans un buffer
                 buf = BytesIO()
                 plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
@@ -190,52 +220,47 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Nombre de frames pour l'animation
         num_frames = 50  # Augmenter pour une animation plus fluide
         frames = np.linspace(0, 1, num_frames)
-        if growth is not None and chart_type != "Lignes":
-            texts = []
-            for _ in labels:
-                texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                     color='white',
-                                     bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-        elif chart_type != "Lignes":
-            # Pour afficher les valeurs qui s'incrémentent
-            value_texts = []
-            for _ in labels:
-                value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                           color='white',
-                                           bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
+        # Préparer les textes pour les valeurs
+        value_texts = []
+        for _ in labels:
+            value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                       color='white',
+                                       bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
         for i in frames:
             current_values = [val * i for val in values]
+            if growth is not None:
+                current_growth = [g * i for g in growth]
 
             if chart_type == "Barres horizontales":
                 # Mettre à jour les largeurs des barres
-                for bar, val in zip(bars, current_values):
-                    bar.set_width(val)
-                # Mettre à jour les positions des labels de croissance ou des valeurs
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                    bar_value.set_width(val)
                 if growth is not None:
-                    for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                        perc_display = f"{int(perc * i)}%"
-                        text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
-                        text.set_text(perc_display)
-                else:
-                    for idx, (text, bar, val) in enumerate(zip(value_texts, bars, current_values)):
-                        value_display = f"{int(val)}"
-                        text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
-                        text.set_text(value_display)
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                        bar_growth.set_width(gro)
+                        bar_growth.set_x(val)
+                # Mettre à jour les positions des valeurs
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                    total_width = bar_value.get_width()
+                    if growth is not None:
+                        total_width += bars_growth[idx].get_width()
+                    text.set_position((total_width + max_value*0.01, bar_value.get_y() + bar_value.get_height()/2))
+                    text.set_text(f"{int(total_width)}")
             elif chart_type == "Barres verticales":
                 # Mettre à jour les hauteurs des barres
-                for bar, val in zip(bars, current_values):
-                    bar.set_height(val)
-                # Mettre à jour les positions des labels de croissance ou des valeurs
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                    bar_value.set_height(val)
                 if growth is not None:
-                    for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                        perc_display = f"{int(perc * i)}%"
-                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
-                        text.set_text(perc_display)
-                else:
-                    for idx, (text, bar, val) in enumerate(zip(value_texts, bars, current_values)):
-                        value_display = f"{int(val)}"
-                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
-                        text.set_text(value_display)
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                        bar_growth.set_height(gro)
+                        bar_growth.set_y(val)
+                # Mettre à jour les positions des valeurs
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                    total_height = bar_value.get_height()
+                    if growth is not None:
+                        total_height += bars_growth[idx].get_height()
+                    text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
+                    text.set_text(f"{int(total_height)}")
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
@@ -309,10 +334,10 @@ if uploaded_file is not None:
             label_col = st.selectbox("Sélectionnez la colonne pour les libellés", columns)
             value_col = st.selectbox("Sélectionnez la colonne pour les valeurs numériques", columns)
 
-            # Optionnelle : sélection de la colonne pour la croissance
-            growth_option = st.checkbox("Ajouter une colonne pour les pourcentages de croissance")
+            # Optionnelle : sélection de la colonne pour la troisième dimension
+            growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
             if growth_option:
-                growth_col = st.selectbox("Sélectionnez la colonne pour les pourcentages de croissance", columns)
+                growth_col = st.selectbox("Sélectionnez la colonne pour la troisième dimension", columns)
             else:
                 growth_col = None
 
