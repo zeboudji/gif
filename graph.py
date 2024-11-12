@@ -87,10 +87,13 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Ajouter les labels de croissance si disponibles
         if growth and chart_type != "Camembert":
             for index, (val, perc_actuel) in enumerate(zip(current_values, [g * (i / 100) for g in growth])):
-                perc_display = f"{int(perc_actuel)}%"
+                if np.isnan(perc_actuel):
+                    perc_display = ""
+                else:
+                    perc_display = f"{int(perc_actuel)}%"
                 if chart_type == "Barres horizontales":
                     ax.text(
-                        val + max(values)*0.01,
+                        val + (max(values)*0.01 if values else 0),
                         index,
                         perc_display,
                         va='center',
@@ -102,7 +105,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 elif chart_type == "Barres verticales":
                     ax.text(
                         index,
-                        val + max(values)*0.01,
+                        val + (max(values)*0.01 if values else 0),
                         perc_display,
                         ha='center',
                         fontsize=12,
@@ -113,7 +116,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 elif chart_type == "Lignes":
                     ax.text(
                         index,
-                        val + max(values)*0.01,
+                        val + (max(values)*0.01 if values else 0),
                         perc_display,
                         ha='center',
                         fontsize=12,
@@ -149,14 +152,14 @@ Ce GIF animé montre la progression des données que vous avez fournies.
 * **Axe des abscisses** : valeurs numériques.
 * **Pourcentage de croissance** : affiché à la fin de chaque barre si disponible.
 
-Veuillez télécharger un fichier Excel contenant vos données.
+Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
 
 # Uploader de fichier
-uploaded_file = st.file_uploader("Veuillez télécharger un fichier Excel avec vos données.", type=["xlsx", "xls", "csv"])
+uploaded_file = st.file_uploader("Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
-    # Lire le fichier Excel
+    # Lire le fichier Excel ou CSV
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
@@ -194,11 +197,25 @@ if uploaded_file is not None:
             if st.button("Générer le graphique"):
                 # Extraire les données
                 labels = df[label_col].astype(str).tolist()
-                values = df[value_col].astype(float).tolist()
+                values = df[value_col]
+
+                # Gérer les valeurs manquantes dans 'values'
+                if values.isnull().any():
+                    st.warning("Des valeurs manquantes ont été trouvées dans la colonne des valeurs numériques. Elles seront remplacées par 0.")
+                    values = values.fillna(0)
+
+                values = values.astype(float).tolist()
 
                 # Si growth_col est sélectionné
                 if growth_col:
-                    growth = df[growth_col].astype(float).tolist()
+                    growth = df[growth_col]
+
+                    # Gérer les valeurs manquantes dans 'growth'
+                    if growth.isnull().any():
+                        st.warning("Des valeurs manquantes ont été trouvées dans la colonne de croissance. Elles seront remplacées par 0.")
+                        growth = growth.fillna(0)
+
+                    growth = growth.astype(float).tolist()
                 else:
                     growth = None  # Pas de croissance
 
