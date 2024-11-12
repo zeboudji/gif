@@ -36,11 +36,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("Les données ne doivent pas contenir de valeurs manquantes.")
         return None
 
-    # Vérifier qu'il n'y a pas de valeurs négatives ou nulles pour le camembert
-    if chart_type == "Camembert":
-        if any(v <= 0 for v in values):
-            st.error("Les valeurs pour le graphique camembert doivent être strictement positives.")
-            return None
+    # Pour le graphique Camembert, ignorer 'growth'
+    if chart_type == "Camembert" and growth is not None:
+        st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
+        growth = None
 
     # Inverser les listes pour les barres horizontales
     if chart_type == "Barres horizontales":
@@ -51,7 +50,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
-    palette = sns.color_palette("Spectral", num_colors)
+    # Utiliser une palette avec suffisamment de couleurs distinctes
+    palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
 
     images = []
 
@@ -109,6 +109,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     elif chart_type == "Camembert":
         # Pas d'axes pour un camembert
         ax.axis('equal')
+        plt.tight_layout()
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -174,7 +175,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 txt.set_text(f"{int(current_y_values[-1])}")
                 txt.set_fontsize(10)
                 txt.set_fontweight('bold')
-                txt.set_color('#88C0D0')
 
                 # Afficher la valeur actuelle au dernier point pour 'Croissance' si elle existe
                 if growth is not None:
@@ -183,7 +183,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     txt_growth.set_text(f"{int(current_y_growth[-1])}")
                     txt_growth.set_fontsize(10)
                     txt_growth.set_fontweight('bold')
-                    txt_growth.set_color('#D08770')
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
@@ -208,7 +207,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             fractions_values = [v / total for v in values]
 
             # Générer suffisamment de couleurs
-            palette = sns.color_palette("Spectral", len(labels))
+            palette = sns.color_palette("hls", len(labels))
 
             for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -229,7 +228,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     for text in texts:
                         text.set_color('white')
 
-                    # Ajouter une légende si growth est utilisé (bien que nous ignorons growth ici)
+                    # Ajouter une légende si growth est utilisé (bien que nous l'ignorons ici)
                     if growth is not None:
                         ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
@@ -310,10 +309,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     plt.close(fig)
 
     # Convertir les images en frames pour le GIF
-    frames_gif = [np.array(img) for img in images]
-
-    # Créer le GIF
     try:
+        frames_gif = [np.array(img) for img in images]
+        # Créer le GIF
         buf_gif = BytesIO()
         imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=durations, loop=0)
         buf_gif.seek(0)
@@ -364,7 +362,7 @@ if uploaded_file is not None:
             # Permettre à l'utilisateur de sélectionner les colonnes
             st.subheader("Sélectionnez les colonnes correspondantes")
             label_col = st.selectbox("Sélectionnez la colonne pour les libellés", columns)
-            value_col = st.selectbox("Sélectionnez la colonne pour les valeurs numériques", columns)
+            value_col = st.selectbox("Sélectionnez la colonne pour les valeurs numériques", [col for col in columns if col != label_col])
 
             # Optionnelle : sélection de la colonne pour la troisième dimension
             growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
@@ -434,6 +432,12 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
+                    # Vérifier les longueurs des listes
+                    st.write(f"Nombre de labels : {len(labels)}")
+                    st.write(f"Nombre de valeurs : {len(values)}")
+                    if growth_col:
+                        st.write(f"Nombre de valeurs de croissance : {len(growth)}")
+
                     # Générer les GIFs pour les types de graphiques sélectionnés
                     try:
                         charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
@@ -450,7 +454,10 @@ if uploaded_file is not None:
                             cols = st.columns(len(row))
                             for col, chart_type in zip(cols, row):
                                 with col:
-                                    st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
+                                    if chart_type in charts:
+                                        st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
+                                    else:
+                                        st.write(f"Graphique {chart_type} non généré.")
                     else:
                         st.error("Aucun graphique n'a pu être généré avec les données fournies.")
     except Exception as e:
