@@ -185,18 +185,33 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             images.append(image)
             buf.close()
     elif chart_type == "Camembert":
+        # Vérifier que les valeurs sont positives
+        if any(v < 0 for v in values) or (growth is not None and any(g < 0 for g in growth)):
+            st.error("Les valeurs pour le graphique camembert doivent être positives.")
+            return None
+
+        # Vérifier que la somme totale est supérieure à zéro
+        total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
+        if total <= 0:
+            st.error("La somme des valeurs pour le graphique camembert doit être supérieure à zéro.")
+            return None
+
         # Nombre de frames pour l'animation
         num_frames = 50  # Plus de frames pour une animation fluide
         frames = np.linspace(0.01, 1, num_frames)
 
         # Calculer les angles pour chaque valeur
-        total = sum([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))])
         fractions_values = [v / total for v in values]
         if growth is not None:
             fractions_growth = [g / total for g in growth]
             combined_fractions = [v + g for v, g in zip(fractions_values, fractions_growth)]
         else:
             combined_fractions = fractions_values
+
+        # Vérifier que les longueurs sont cohérentes
+        if not (len(combined_fractions) == len(labels) == len(palette)):
+            st.error("Les longueurs des fractions, des labels et de la palette de couleurs doivent être identiques.")
+            return None
 
         for i in frames:
             current_fractions = [fraction * i for fraction in combined_fractions]
@@ -403,7 +418,11 @@ if uploaded_file is not None:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
                     # Générer les GIFs pour les types de graphiques sélectionnés
-                    charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                    try:
+                        charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                    except Exception as e:
+                        st.error(f"Erreur lors de la création des graphiques : {e}")
+                        charts = None
 
                     # Afficher les graphiques
                     st.subheader("Graphiques animés")
@@ -418,6 +437,6 @@ if uploaded_file is not None:
                     else:
                         st.error("Aucun graphique n'a pu être généré avec les données fournies.")
     except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier : {e}")
+        st.error(f"Erreur lors du traitement du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
