@@ -8,8 +8,8 @@ import imageio
 import seaborn as sns
 import matplotlib.patheffects as path_effects
 
-# Appliquer un style moderne
-plt.style.use('seaborn-whitegrid')  # Style moderne
+# Appliquer un style moderne avec Seaborn
+sns.set_style('whitegrid')  # Style moderne
 sns.set_palette('viridis')  # Palette de couleurs modernes
 
 # Fonction pour créer et enregistrer le GIF animé
@@ -24,7 +24,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         return None
 
     # Inverser les listes pour certains types de graphiques
-    if chart_type in ["Barres horizontales"]:
+    if chart_type == "Barres horizontales":
         labels = labels[::-1]
         values = values[::-1]
         if growth is not None:
