@@ -55,6 +55,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
+        ax.set_xlabel("Labels", fontsize=14, fontweight='bold')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
         line, = ax.plot([], [], color='#2A9D8F', marker='o', linewidth=3)
     else:
@@ -76,51 +77,80 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     images = []
 
-    # Nombre de frames pour l'animation
-    num_frames = len(values)
-    for i in range(1, num_frames + 1):
-        if chart_type == "Barres horizontales":
-            current_values = values[:i] + [0]*(len(values)-i)
-            # Mettre à jour les largeurs des barres
-            for bar, val in zip(bars, current_values):
-                bar.set_width(val)
-            # Mettre à jour les positions des labels de croissance
-            if growth is not None:
-                for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    if idx < i:
-                        perc_display = f"{int(perc)}%"
-                        text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
-                        text.set_text(perc_display)
-                    else:
-                        text.set_text('')
-        elif chart_type == "Barres verticales":
-            current_values = values[:i] + [0]*(len(values)-i)
-            # Mettre à jour les hauteurs des barres
-            for bar, val in zip(bars, current_values):
-                bar.set_height(val)
-            # Mettre à jour les positions des labels de croissance
-            if growth is not None:
-                for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    if idx < i:
-                        perc_display = f"{int(perc)}%"
-                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
-                        text.set_text(perc_display)
-                    else:
-                        text.set_text('')
-        elif chart_type == "Lignes":
-            # Mettre à jour les données de la ligne
-            x_data = range(i)
-            y_data = values[:i]
-            line.set_data(x_data, y_data)
-            # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
+    if chart_type == "Lignes":
+        x_data = np.arange(len(values))
+        y_data = np.array(values)
 
-        # Enregistrer l'image dans un buffer
-        buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', transparent=False)
-        buf.seek(0)
-        image = Image.open(buf).convert('RGBA')
-        images.append(image)
-        buf.close()
+        # Nombre de frames pour l'animation
+        frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
+        num_segments = len(values) - 1
+        num_frames = frames_per_segment * num_segments
+
+        for frame in range(num_frames):
+            # Déterminer le segment actuel
+            segment = frame // frames_per_segment
+            progress = (frame % frames_per_segment) / frames_per_segment
+
+            # Construire les données jusqu'au point actuel
+            current_x = x_data[:segment+1].tolist()
+            current_y = y_data[:segment+1].tolist()
+
+            if segment < num_segments:
+                # Interpoler le point suivant
+                next_x = x_data[segment] + progress * (x_data[segment+1] - x_data[segment])
+                next_y = y_data[segment] + progress * (y_data[segment+1] - y_data[segment])
+                current_x.append(next_x)
+                current_y.append(next_y)
+
+            line.set_data(current_x, current_y)
+
+            # Enregistrer l'image dans un buffer
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', transparent=False)
+            buf.seek(0)
+            image = Image.open(buf).convert('RGBA')
+            images.append(image)
+            buf.close()
+    else:
+        # Nombre de frames pour l'animation
+        num_frames = len(values)
+        for i in range(1, num_frames + 1):
+            if chart_type == "Barres horizontales":
+                current_values = values[:i] + [0]*(len(values)-i)
+                # Mettre à jour les largeurs des barres
+                for bar, val in zip(bars, current_values):
+                    bar.set_width(val)
+                # Mettre à jour les positions des labels de croissance
+                if growth is not None:
+                    for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
+                        if idx < i:
+                            perc_display = f"{int(perc)}%"
+                            text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
+                            text.set_text(perc_display)
+                        else:
+                            text.set_text('')
+            elif chart_type == "Barres verticales":
+                current_values = values[:i] + [0]*(len(values)-i)
+                # Mettre à jour les hauteurs des barres
+                for bar, val in zip(bars, current_values):
+                    bar.set_height(val)
+                # Mettre à jour les positions des labels de croissance
+                if growth is not None:
+                    for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
+                        if idx < i:
+                            perc_display = f"{int(perc)}%"
+                            text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
+                            text.set_text(perc_display)
+                        else:
+                            text.set_text('')
+
+            # Enregistrer l'image dans un buffer
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', transparent=False)
+            buf.seek(0)
+            image = Image.open(buf).convert('RGBA')
+            images.append(image)
+            buf.close()
 
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
@@ -192,7 +222,7 @@ if uploaded_file is not None:
 
             # Ajuster la durée de l'animation
             st.subheader("Ajustez la vitesse de l'animation")
-            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=1.0, value=0.15, step=0.05)
+            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=1.0, value=0.1, step=0.05)
 
             # Bouton pour générer le graphique
             if st.button("Générer le graphique"):
