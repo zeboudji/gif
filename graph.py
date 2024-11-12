@@ -22,7 +22,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("La liste de croissance doit avoir la même longueur que les labels.")
         return None
 
-    # Inverser les listes pour certains types de graphiques
+    # Inverser les listes pour les barres horizontales
     if chart_type == "Barres horizontales":
         labels = labels[::-1]
         values = values[::-1]
@@ -56,7 +56,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=14, fontweight='bold')
         plt.xticks(range(len(labels)), labels, rotation=45, ha='right')
-        x_data = range(len(values))
         line, = ax.plot([], [], color='#2A9D8F', marker='o', linewidth=3)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
@@ -78,36 +77,41 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     images = []
 
     # Nombre de frames pour l'animation
-    num_frames = 100  # Plus de frames pour une animation fluide
-    frames = np.linspace(0, 1, num_frames)
-
-    for i in frames:
-        current_values = [val * i for val in values]
-
+    num_frames = len(values)
+    for i in range(1, num_frames + 1):
         if chart_type == "Barres horizontales":
+            current_values = values[:i] + [0]*(len(values)-i)
             # Mettre à jour les largeurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_width(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
-                    text.set_text(perc_display)
+                    if idx < i:
+                        perc_display = f"{int(perc)}%"
+                        text.set_position((bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2))
+                        text.set_text(perc_display)
+                    else:
+                        text.set_text('')
         elif chart_type == "Barres verticales":
+            current_values = values[:i] + [0]*(len(values)-i)
             # Mettre à jour les hauteurs des barres
             for bar, val in zip(bars, current_values):
                 bar.set_height(val)
             # Mettre à jour les positions des labels de croissance
             if growth is not None:
                 for idx, (text, bar, perc) in enumerate(zip(texts, bars, growth)):
-                    perc_display = f"{int(perc * i)}%"
-                    text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
-                    text.set_text(perc_display)
+                    if idx < i:
+                        perc_display = f"{int(perc)}%"
+                        text.set_position((bar.get_x() + bar.get_width()/2, bar.get_height() + max_value*0.01))
+                        text.set_text(perc_display)
+                    else:
+                        text.set_text('')
         elif chart_type == "Lignes":
             # Mettre à jour les données de la ligne
-            y_current = [val * i for val in values]
-            line.set_data(x_data, y_current)
+            x_data = range(i)
+            y_data = values[:i]
+            line.set_data(x_data, y_data)
             # Pas de labels de croissance pour la ligne pour éviter la surcharge visuelle
 
         # Enregistrer l'image dans un buffer
@@ -188,7 +192,7 @@ if uploaded_file is not None:
 
             # Ajuster la durée de l'animation
             st.subheader("Ajustez la vitesse de l'animation")
-            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=0.5, value=0.15, step=0.05)
+            frame_duration = st.slider("Durée de chaque frame (en secondes)", min_value=0.05, max_value=1.0, value=0.15, step=0.05)
 
             # Bouton pour générer le graphique
             if st.button("Générer le graphique"):
