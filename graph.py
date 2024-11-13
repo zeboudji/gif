@@ -522,3 +522,4 @@ if uploaded_file is not None:
         st.error(f"Erreur lors du traitement du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
+
