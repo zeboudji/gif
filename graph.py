@@ -51,9 +51,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
-    # Utiliser une palette de base
+    # Utiliser une palette de base et répéter les couleurs si nécessaire
     base_palette = sns.color_palette("tab10")
-    # Répéter les couleurs si nécessaire pour correspondre au nombre de catégories
     palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
 
     images = []
@@ -345,8 +344,18 @@ if uploaded_file is not None:
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
+            sheet_names = None  # Pas d'onglets pour les CSV
         else:
-            df = pd.read_excel(uploaded_file)
+            # Lire le fichier Excel pour obtenir les noms des onglets
+            excel_file = pd.ExcelFile(uploaded_file)
+            sheet_names = excel_file.sheet_names
+
+            # Permettre à l'utilisateur de sélectionner un onglet
+            st.subheader("🗂️ Sélectionnez l'onglet à utiliser")
+            sheet_name = st.selectbox("Choisissez un onglet", sheet_names)
+
+            # Lire le DataFrame à partir de l'onglet sélectionné
+            df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
 
         # Afficher un aperçu des données
         st.subheader("🔍 Aperçu des données téléchargées")
