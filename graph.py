@@ -50,13 +50,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
-    # Utiliser une palette avec suffisamment de couleurs distinctes
-    palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
+    base_palette = sns.color_palette("hls", 10)  # Palette de base avec 10 couleurs distinctes
 
-    # Vérifier que la palette a le bon nombre de couleurs
-    if len(palette) != num_colors:
-        st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
-        return None
+    # Générer une palette qui se répète si nécessaire
+    palette = base_palette * (num_colors // len(base_palette) + 1)
+    palette = palette[:num_colors]  # Couper pour correspondre exactement au nombre de labels
 
     # Ajouter des messages de débogage
     st.write(f"Création du graphique: {chart_type}")
@@ -69,7 +67,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     images = []
 
     # Création de la figure et des axes en dehors de la boucle
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=100)
 
     # Appliquer un fond moderne
     fig.patch.set_facecolor('#2E3440')
@@ -85,47 +83,49 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     ax.title.set_color('white')
 
     # Fixer les limites des axes pour éviter les sauts
-    max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
-
-    if chart_type == "Barres horizontales":
-        ax.set_xlim(0, max_value)
-        ax.set_ylim(-0.5, len(labels) - 0.5)
-        ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        if growth is not None:
-            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
-        else:
-            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
-    elif chart_type == "Barres verticales":
-        ax.set_ylim(0, max_value)
-        ax.set_xlim(-0.5, len(labels) - 0.5)
-        ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        plt.xticks(rotation=45, ha='right', color='white')
-        if growth is not None:
-            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
-        else:
-            bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
-    elif chart_type == "Lignes":
-        ax.set_ylim(0, max_value)
-        ax.set_xlim(-0.5, len(labels) - 0.5)
-        ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
-        plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
-        line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
-        if growth is not None:
-            line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
-        # Préparer les textes pour les valeurs
-        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#88C0D0') for _ in range(len(labels))]
-        if growth is not None:
-            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#D08770') for _ in range(len(labels))]
-    elif chart_type == "Camembert":
-        # Pas d'axes pour un camembert
+    if chart_type == "Camembert":
         ax.axis('equal')
         plt.tight_layout()
     else:
-        st.error("Type de graphique non supporté pour cette animation.")
-        return None
+        max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
+
+        if chart_type == "Barres horizontales":
+            ax.set_xlim(0, max_value)
+            ax.set_ylim(-0.5, len(labels) - 0.5)
+            ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
+            if growth is not None:
+                bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+                bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+            else:
+                bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
+        elif chart_type == "Barres verticales":
+            ax.set_ylim(0, max_value)
+            ax.set_xlim(-0.5, len(labels) - 0.5)
+            ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
+            plt.xticks(rotation=45, ha='right', color='white')
+            if growth is not None:
+                bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+                bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+            else:
+                bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
+        elif chart_type == "Lignes":
+            ax.set_ylim(0, max_value)
+            ax.set_xlim(-0.5, len(labels) - 0.5)
+            ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
+            ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
+            plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
+            line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
+            if growth is not None:
+                line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
+            # Préparer les textes pour les valeurs
+            value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#88C0D0') for _ in range(len(labels))]
+            if growth is not None:
+                value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#D08770') for _ in range(len(labels))]
+        elif chart_type == "Camembert":
+            pass  # Pas de configuration supplémentaire nécessaire
+        else:
+            st.error("Type de graphique non supporté pour cette animation.")
+            return None
 
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
@@ -134,8 +134,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
         # Ajuster les marges
         plt.tight_layout()
-
-    images = []
 
     if chart_type == "Lignes":
         x_data = np.arange(len(values))
@@ -219,8 +217,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             # Calculer les fractions pour chaque valeur
             fractions_values = [v / total for v in values]
 
-            # Générer suffisamment de couleurs
-            palette = sns.color_palette("hls", len(labels))  # 'hls' peut générer de nombreuses couleurs
+            # Générer une palette qui se répète si nécessaire
+            base_palette = sns.color_palette("hls", 10)  # Palette de base avec 10 couleurs distinctes
+            palette_pie = base_palette * (num_colors // len(base_palette) + 1)
+            palette_pie = palette_pie[:num_colors]  # Couper pour correspondre exactement au nombre de labels
 
             for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -233,10 +233,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     fig.patch.set_facecolor('#2E3440')
                     ax.set_facecolor('#3B4252')
                     ax.axis('equal')
-                    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+                    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white', pad=20)
 
                     # Dessiner le camembert avec les fractions actuelles
-                    patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
+                    patches, texts = ax.pie(current_fractions, labels=labels, colors=palette_pie, startangle=90, counterclock=False)
                     # Changer la couleur des textes
                     for text in texts:
                         text.set_color('white')
@@ -259,14 +259,14 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Pour les graphiques à barres
         # Nombre de frames pour l'animation
         num_frames = 50  # Augmenter pour une animation plus fluide
-        frames = np.linspace(0, 1, num_frames)
+        frames_steps = np.linspace(0, 1, num_frames)
         # Préparer les textes pour les valeurs
         value_texts = []
         for _ in labels:
             value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
                                        color='white',
                                        bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-        for i in frames:
+        for i in frames_steps:
             current_values = [val * i for val in values]
             if growth is not None:
                 current_growth = [g * i for g in growth]
@@ -335,7 +335,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
 # Interface Streamlit
 st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide")
-st.title("Animation Graphique Personnalisée")
+st.title("🎨 Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
 
