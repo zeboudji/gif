@@ -57,9 +57,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
-    # Utiliser une palette de base et répéter les couleurs si nécessaire
-    base_palette = sns.color_palette("tab10")
-    palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
+    # Utiliser une palette avec suffisamment de couleurs distinctes
+    palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
 
     images = []
 
@@ -88,7 +87,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         if growth is not None:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
@@ -99,7 +98,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xticklabels(labels, rotation=45, ha='right', color='white')
         if growth is not None:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
+            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
@@ -123,17 +122,13 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("Type de graphique non supporté pour cette animation.")
         return None
 
-    # Supprimer plt.tight_layout() pour éviter les changements de taille
-    # plt.tight_layout()
-
-    # Fixer les marges manuellement pour s'assurer que la taille reste constante
-    fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
-
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
         # Ajouter une légende si growth est utilisé
         if growth is not None and chart_type != "Camembert":
             ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+        # Ajuster les marges
+        plt.tight_layout()
 
     images = []
 
@@ -198,7 +193,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
@@ -224,9 +219,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             # Calculer les fractions pour chaque valeur
             fractions_values = [v / total for v in values]
 
-            # Générer la palette en répétant les couleurs si nécessaire
-            base_palette = sns.color_palette("tab10")
-            palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
+            # Générer suffisamment de couleurs
+            palette = sns.color_palette("hls", len(labels))  # 'hls' peut générer de nombreuses couleurs
 
             for idx, i in enumerate(frames):
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -249,7 +243,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
-                    plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
+                    plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
                     buf.seek(0)
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
@@ -311,7 +305,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
