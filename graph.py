@@ -8,10 +8,13 @@ import imageio
 import seaborn as sns
 from matplotlib.patches import Patch  # Pour créer des légendes personnalisées
 
-# Appliquer un style moderne avec Seaborn
+# 1. Définir la configuration de la page en premier
+st.set_page_config(page_title="🎨 Animation Graphique Personnalisée", layout="wide")
+
+# 2. Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
 
-# Ajouter du CSS personnalisé pour rendre les images réactives
+# 3. Ajouter du CSS personnalisé pour rendre les images réactives
 st.markdown(
     """
     <style>
@@ -24,7 +27,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Fonction pour créer et enregistrer les GIF animés
+# 4. Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
@@ -34,7 +37,7 @@ def create_animated_charts(labels, values, growth=None, chart_type_selection=Non
             charts[chart_type] = gif_buffer
     return charts
 
-# Fonction pour créer un GIF animé pour un type de graphique spécifique
+# 5. Fonction pour créer un GIF animé pour un type de graphique spécifique
 def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
@@ -55,13 +58,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
 
-    # Inverser les listes pour les barres horizontales (RETIRÉ pour respecter l'ordre initial)
-    # if chart_type == "Barres horizontales":
-    #     labels = labels[::-1]
-    #     values = values[::-1]
-    #     if growth is not None:
-    #         growth = growth[::-1]
-
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
@@ -70,8 +66,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     if len(palette) != num_colors:
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
         return None
-
-    images = []
 
     # Création de la figure et des axes avec taille fixe
     fig, ax = plt.subplots(figsize=(8, 6), dpi=100)  # Taille et résolution fixes
@@ -355,8 +349,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error(f"Erreur lors de la création du GIF : {e}")
         return None
 
-# Interface Streamlit
-st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide")
+# 6. Interface Streamlit
 st.title("🎨 Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
@@ -372,7 +365,7 @@ Vous pouvez choisir de générer un ou plusieurs types de graphiques simultaném
 Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
 
-# Uploader de fichier
+# 7. Uploader de fichier
 uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
