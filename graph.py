@@ -102,6 +102,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             else:
                 bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
             # Pas de légende pour éviter la redondance avec les labels sur l'axe
+
         elif chart_type == "Barres verticales":
             ax.set_ylim(0, max_value)
             ax.set_xlim(-0.5, len(labels) - 0.5)
@@ -114,6 +115,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             else:
                 bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
             # Pas de légende pour éviter la redondance avec les labels sur l'axe
+
         elif chart_type == "Lignes":
             # Ajustement des marges pour inclure les annotations
             y_margin = max_value * 0.15
@@ -135,6 +137,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 ax.legend([line_values, line_growth], ['Valeurs', 'Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
             else:
                 ax.legend([line_values], ['Valeurs'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
         elif chart_type == "Camembert":
             # Pas d'axes pour un camembert
             ax.axis('equal')
