@@ -6,6 +6,7 @@ from PIL import Image
 from io import BytesIO
 import imageio
 import seaborn as sns
+import itertools
 
 # Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
@@ -50,18 +51,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
-    # Utiliser une palette avec suffisamment de couleurs distinctes
-    if num_colors <= 10:
-        palette = sns.color_palette("tab10", num_colors)
-    elif num_colors <= 20:
-        palette = sns.color_palette("tab20", num_colors)
-    else:
-        palette = sns.color_palette("hls", num_colors)
-
-    # Vérifier que la palette a le bon nombre de couleurs
-    if len(palette) != num_colors:
-        st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
-        return None
+    # Utiliser une palette de base
+    base_palette = sns.color_palette("tab10")
+    # Répéter les couleurs si nécessaire pour correspondre au nombre de catégories
+    palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
 
     images = []
 
@@ -143,7 +136,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Nombre de frames pour l'animation
         frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
         num_segments = len(values) - 1
-        num_frames = frames_per_segment * num_segments
+        num_frames = frames_per_segment * num_segments if num_segments > 0 else 1
 
         for frame in range(num_frames):
             # Déterminer le segment actuel
@@ -216,13 +209,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             # Calculer les fractions pour chaque valeur
             fractions_values = [v / total for v in values]
 
-            # Générer suffisamment de couleurs
-            if num_colors <= 10:
-                palette = sns.color_palette("tab10", num_colors)
-            elif num_colors <= 20:
-                palette = sns.color_palette("tab20", num_colors)
-            else:
-                palette = sns.color_palette("hls", num_colors)
+            # Générer la palette en répétant les couleurs si nécessaire
+            base_palette = sns.color_palette("tab10")
+            palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
 
             for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -242,10 +231,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     # Changer la couleur des textes
                     for text in texts:
                         text.set_color('white')
-
-                    # Ajouter une légende si growth est utilisé (bien que nous l'ignorions ici)
-                    if growth is not None:
-                        ax.legend(['Valeurs'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
