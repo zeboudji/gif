@@ -42,12 +42,12 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
 
-    # Inverser les listes pour les barres horizontales
-    if chart_type == "Barres horizontales":
-        labels = labels[::-1]
-        values = values[::-1]
-        if growth is not None:
-            growth = growth[::-1]
+    # Inverser les listes pour les barres horizontales (RETIRÉ pour respecter l'ordre initial)
+    # if chart_type == "Barres horizontales":
+    #     labels = labels[::-1]
+    #     values = values[::-1]
+    #     if growth is not None:
+    #         growth = growth[::-1]
 
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
@@ -142,8 +142,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
-        # Ajuster les marges
-        fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)  # Réduire la droite pour la légende
+        # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
+        fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
 
     images = []
 
@@ -264,7 +264,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         except Exception as e:
             st.error(f"Erreur lors de la création du graphique camembert : {e}")
             return None
-
     else:
         # Pour les graphiques à barres
         # Nombre de frames pour l'animation
@@ -453,8 +452,8 @@ if uploaded_file is not None:
                 # Supprimer les lignes avec des valeurs manquantes
                 data = data.dropna()
 
-                # Trier les données par valeur décroissante pour une meilleure lisibilité
-                data = data.sort_values(by=value_col, ascending=False).reset_index(drop=True)
+                # TRi supprimé pour respecter l'ordre initial
+                # data = data.sort_values(by=value_col, ascending=False).reset_index(drop=True)
 
                 # Mettre à jour les listes après nettoyage
                 labels = data[label_col].tolist()
@@ -468,7 +467,7 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
-                    # Afficher les longueurs des listes pour débogage
+                    # Afficher les longueurs des listes pour débogage (PEUT ÊTRE RETIRÉ)
                     st.write(f"Nombre de labels : {len(labels)}")
                     st.write(f"Nombre de valeurs : {len(values)}")
                     if growth_col:
