@@ -15,7 +15,6 @@ sns.set_theme(style='whitegrid')
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
-    total_charts = len(selected_chart_types)
 
     for chart_type in selected_chart_types:
         st.write(f"### Génération du graphique : {chart_type}")
@@ -96,7 +95,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        plt.xticks(rotation=45, ha='right', color='white')
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=45, ha='right', color='white')
         if growth is not None:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
             bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
@@ -123,13 +123,17 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error("Type de graphique non supporté pour cette animation.")
         return None
 
+    # Supprimer plt.tight_layout() pour éviter les changements de taille
+    # plt.tight_layout()
+
+    # Fixer les marges manuellement pour s'assurer que la taille reste constante
+    fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
         # Ajouter une légende si growth est utilisé
         if growth is not None and chart_type != "Camembert":
             ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-        # Ajuster les marges
-        plt.tight_layout()
 
     images = []
 
@@ -170,7 +174,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 line_growth.set_data(current_x, current_y_growth)
 
             # Mettre à jour les textes des valeurs
-            # Effacer les textes précédents
             for txt in value_texts_values:
                 txt.set_text('')
             if growth is not None:
@@ -333,6 +336,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     # Convertir les images en frames pour le GIF
     try:
         frames_gif = [np.array(img) for img in images]
+        # Vérifier que toutes les images ont la même taille
+        shapes = [frame.shape for frame in frames_gif]
+        if len(set(shapes)) > 1:
+            st.error("Les images générées n'ont pas toutes la même taille. Vérifiez que tous les éléments du graphique restent constants en taille.")
+            return None
         # Créer le GIF
         buf_gif = BytesIO()
         imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=durations, loop=0)
