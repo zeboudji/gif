@@ -119,6 +119,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
         elif chart_type == "Pareto":
             # Pas d'axes pour un Pareto
             ax.axis('off')  # On cache les axes pour une meilleure présentation du Pareto
+            ax.set_title(title, fontsize=16, fontweight='bold', color='white', pad=20)
         else:
             st.error("Type de graphique non supporté pour cette animation.")
             return []
@@ -128,8 +129,6 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
             ax.set_title(title, fontsize=16, fontweight='bold', color='white')
             # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
             fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
-        else:
-            ax.set_title(title, fontsize=16, fontweight='bold', color='white', pad=20)
     
         frames = []
         
@@ -197,7 +196,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 buf = BytesIO()
                 plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
                 buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
+                image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                 frames.append(image)
                 buf.close()
     
@@ -250,7 +249,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                     buf = BytesIO()
                     plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
                     buf.seek(0)
-                    image = Image.open(buf).convert('RGBA')
+                    image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                     frames.append(image)
                     buf.close()
             except Exception as e:
@@ -307,7 +306,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 buf = BytesIO()
                 plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
                 buf.seek(0)
-                image = Image.open(buf).convert('RGBA')
+                image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                 frames.append(image)
                 buf.close()
     
@@ -318,15 +317,13 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
         return frames
 
 # 5. Fonction pour combiner des images horizontalement
-from PIL import Image
-
 def combine_images_horizontally(image_list):
     if not image_list:
         return None
     widths, heights = zip(*(i.size for i in image_list))
     total_width = sum(widths)
     max_height = max(heights)
-    combined_image = Image.new('RGBA', (total_width, max_height), (0, 0, 0, 0))
+    combined_image = Image.new('RGB', (total_width, max_height), (0, 0, 0))  # Utiliser RGB
     x_offset = 0
     for im in image_list:
         combined_image.paste(im, (x_offset, 0))
@@ -375,10 +372,11 @@ def create_single_animated_gif(labels, values, growth=None, chart_type_selection
     
     # Convertir les images en frames pour le GIF
     try:
-        frames_gif = [np.array(img) for img in combined_images]
-        # Créer le GIF
+        # Utiliser imageio.get_writer pour un meilleur contrôle
         buf_gif = BytesIO()
-        imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=[frame_duration] * len(combined_images), loop=0)
+        with imageio.get_writer(buf_gif, format='GIF', mode='I', duration=frame_duration, loop=0) as writer:
+            for img in combined_images:
+                writer.append_data(np.array(img))
         buf_gif.seek(0)
         return buf_gif
     except Exception as e:
@@ -539,4 +537,3 @@ if uploaded_file is not None:
         st.error(f"Erreur lors du traitement du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
-
