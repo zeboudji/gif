@@ -8,21 +8,39 @@ import imageio
 import seaborn as sns
 from matplotlib.patches import Patch  # Pour créer des légendes personnalisées
 
-# Appliquer un style moderne avec Seaborn
+# 1. Définir la configuration de la page en premier
+st.set_page_config(page_title="🎨 Animation Graphique Personnalisée", layout="wide")
+
+# 2. Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
 
-# Fonction pour créer et enregistrer les GIF animés
-def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
+# 3. Ajouter du CSS personnalisé pour rendre les images réactives
+st.markdown(
+    """
+    <style>
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 4. Fonction pour créer et enregistrer les GIF animés
+def create_animated_charts(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
     for chart_type in selected_chart_types:
-        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
+        # Obtenir le titre correspondant ou utiliser un titre par défaut
+        title = titles.get(chart_type, "Titre 1")
+        gif_buffer = create_animated_chart(labels, values, growth, chart_type, title, frame_duration)
         if gif_buffer:
             charts[chart_type] = gif_buffer
     return charts
 
-# Fonction pour créer un GIF animé pour un type de graphique spécifique
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
+# 5. Fonction pour créer un GIF animé pour un type de graphique spécifique
+def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", title="Titre 1", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
@@ -42,13 +60,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
 
-    # Inverser les listes pour les barres horizontales (RETIRÉ pour respecter l'ordre initial)
-    # if chart_type == "Barres horizontales":
-    #     labels = labels[::-1]
-    #     values = values[::-1]
-    #     if growth is not None:
-    #         growth = growth[::-1]
-
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
@@ -57,8 +68,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     if len(palette) != num_colors:
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
         return None
-
-    images = []
 
     # Création de la figure et des axes avec taille fixe
     fig, ax = plt.subplots(figsize=(8, 6), dpi=100)  # Taille et résolution fixes
@@ -141,7 +150,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         return None
 
     if chart_type != "Camembert":
-        ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+        ax.set_title(title, fontsize=16, fontweight='bold', color='white')
         # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
         fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
 
@@ -241,7 +250,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     fig.patch.set_facecolor('#2E3440')
                     ax.set_facecolor('#3B4252')
                     ax.axis('equal')
-                    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+                    ax.set_title(title, fontsize=16, fontweight='bold', color='white')
 
                     # Dessiner le camembert avec les fractions actuelles
                     patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
@@ -342,8 +351,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         st.error(f"Erreur lors de la création du GIF : {e}")
         return None
 
-# Interface Streamlit
-st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide")
+# 6. Interface Streamlit
 st.title("🎨 Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
@@ -359,7 +367,7 @@ Vous pouvez choisir de générer un ou plusieurs types de graphiques simultaném
 Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
 
-# Uploader de fichier
+# 7. Uploader de fichier
 uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
@@ -418,6 +426,16 @@ if uploaded_file is not None:
                 default=chart_type_options
             )
 
+            # Si des types de graphiques sont sélectionnés, demander des titres
+            titles = {}
+            if chart_type_selection:
+                st.subheader("🖋️ Entrez les titres des graphiques")
+                for i, chart_type in enumerate(chart_type_selection, 1):
+                    user_title = st.text_input(f"Entrez le titre pour **{chart_type}**", value=f"Titre {i}")
+                    titles[chart_type] = user_title if user_title.strip() else f"Titre {i}"
+            else:
+                st.info("Veuillez sélectionner au moins un type de graphique.")
+
             # Ajuster la durée de l'animation
             st.subheader("⏱️ Ajustez la vitesse de l'animation")
             frame_duration = st.slider(
@@ -452,9 +470,6 @@ if uploaded_file is not None:
                 # Supprimer les lignes avec des valeurs manquantes
                 data = data.dropna()
 
-                # TRi supprimé pour respecter l'ordre initial
-                # data = data.sort_values(by=value_col, ascending=False).reset_index(drop=True)
-
                 # Mettre à jour les listes après nettoyage
                 labels = data[label_col].tolist()
                 values = data[value_col].tolist()
@@ -467,7 +482,7 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
-                    # Afficher les longueurs des listes pour débogage (PEUT ÊTRE RETIRÉ)
+                    # Afficher les longueurs des listes pour débogage (peut être retiré)
                     st.write(f"Nombre de labels : {len(labels)}")
                     st.write(f"Nombre de valeurs : {len(values)}")
                     if growth_col:
@@ -475,7 +490,7 @@ if uploaded_file is not None:
 
                     # Générer les GIFs pour les types de graphiques sélectionnés
                     try:
-                        charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                        charts = create_animated_charts(labels, values, growth, chart_type_selection, titles, frame_duration)
                     except Exception as e:
                         st.error(f"Erreur lors de la création des graphiques : {e}")
                         charts = None
