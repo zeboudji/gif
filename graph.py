@@ -125,7 +125,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
             st.error("Type de graphique non supporté pour cette animation.")
             return frames
 
-        # Titre du graphique sauf pour le Pareto (géré différemment)
+    # Titre du graphique sauf pour le Pareto (géré différemment)
         if chart_type != "Pareto":
             ax.set_title(title, fontsize=16, fontweight='bold', color='white')
             # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
@@ -205,44 +205,45 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 cumulative = np.cumsum(values)
                 cumulative_percentage = 100 * cumulative / cumulative[-1]
 
+                # Initialiser l'axe secondaire une seule fois
+                ax2 = ax.twinx()
+
+                # Dessiner les barres et la ligne cumulée initialement
+                bars = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
+                line, = ax2.plot([], [], color='red', marker='o', linestyle='-', linewidth=2)
+
+                # Ajouter des annotations pour la ligne cumulée
+                annotations = [ax2.text(j, 0, f"{0:.1f}%", color='red', ha='center', va='bottom', fontsize=8, fontweight='bold') for j in range(len(labels))]
+
+                # Créer une légende
+                handles = [
+                    Patch(facecolor=palette[i], label=labels[i]) for i in range(len(labels))
+                ]
+                handles.append(Patch(facecolor='red', label='Cumul (%)'))
+                ax.legend(handles=handles, title='Légende', loc='upper left', bbox_to_anchor=(1, 1),
+                          facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
                 # Nombre de frames pour l'animation
                 num_frames = 50  # Plus de frames pour une animation fluide
 
-                frames_values = np.linspace(0, 1, num_frames)
-                frames_cumulative = np.linspace(0, 1, num_frames)
+                for i in range(num_frames):
+                    progress = i / (num_frames - 1)  # Progression de 0 à 1
 
-                for i in frames_values:
-                    current_values = [v * i for v in values]
-                    current_cumulative = [c * i for c in cumulative_percentage]
+                    # Mettre à jour les barres
+                    for bar, val in zip(bars, values):
+                        bar.set_height(val * progress)
 
-                    ax.clear()
-                    # Appliquer un fond moderne
-                    fig.patch.set_facecolor('#2E3440')
-                    ax.set_facecolor('#3B4252')
-                    ax.axis('off')  # On cache les axes pour une meilleure présentation du Pareto
-                    ax.set_title(title, fontsize=16, fontweight='bold', color='white', pad=20)
+                    # Mettre à jour la ligne cumulée
+                    current_cumulative = [c * progress for c in cumulative_percentage]
+                    line.set_data(range(len(labels)), current_cumulative)
 
-                    # Dessiner les barres
-                    ax.bar(labels, current_values, color=palette, edgecolor='white')
-
-                    # Dessiner la ligne cumulée
-                    ax2 = ax.twinx()
-                    ax2.plot(labels, current_cumulative, color='red', marker='o', linestyle='-', linewidth=2)
-                    ax2.set_ylim(0, 100)
-                    ax2.axis('off')  # On cache les axes secondaires
-
-                    # Ajouter des annotations pour la ligne cumulée
-                    for j, cp in enumerate(current_cumulative):
+                    # Mettre à jour les annotations
+                    for j, (anno, cp) in enumerate(zip(annotations, current_cumulative)):
                         if cp > 0:
-                            ax2.text(j, cp, f"{cp:.1f}%", color='red', ha='center', va='bottom', fontsize=8, fontweight='bold')
-
-                    # Créer une légende
-                    handles = [
-                        Patch(facecolor=palette[i], label=labels[i]) for i in range(len(labels))
-                    ]
-                    handles.append(Patch(facecolor='red', label='Cumul (%)'))
-                    ax.legend(handles=handles, title='Légende', loc='upper left', bbox_to_anchor=(1, 1),
-                              facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+                            anno.set_position((j, cp))
+                            anno.set_text(f"{cp:.1f}%")
+                        else:
+                            anno.set_text('')
 
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
@@ -251,6 +252,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                     image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                     frames.append(image)
                     buf.close()
+
             except Exception as e:
                 st.error(f"Erreur lors de la création du graphique Pareto : {e}")
                 return frames
@@ -258,14 +260,14 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
             # Pour les graphiques à barres
             # Nombre de frames pour l'animation
             num_frames = 50  # Augmenter pour une animation plus fluide
-            frames = np.linspace(0, 1, num_frames)
+            frames_steps = np.linspace(0, 1, num_frames)
             # Préparer les textes pour les valeurs
             value_texts = []
             for _ in labels:
                 value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
                                            color='white',
                                            bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-            for i in frames:
+            for i in frames_steps:
                 current_values = [val * i for val in values]
                 if growth is not None:
                     current_growth = [g * i for g in growth]
@@ -309,228 +311,224 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 frames.append(image)
                 buf.close()
 
-        if not frames:
-            st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
-        return frames
+    # 5. Fonction pour combiner des images horizontalement
+    def combine_images_horizontally(image_list):
+        if not image_list:
+            return None
+        widths, heights = zip(*(i.size for i in image_list))
+        total_width = sum(widths)
+        max_height = max(heights)
+        combined_image = Image.new('RGB', (total_width, max_height), (0, 0, 0))  # Utiliser RGB
+        x_offset = 0
+        for im in image_list:
+            combined_image.paste(im, (x_offset, 0))
+            x_offset += im.width
+        return combined_image
 
-# 5. Fonction pour combiner des images horizontalement
-def combine_images_horizontally(image_list):
-    if not image_list:
-        return None
-    widths, heights = zip(*(i.size for i in image_list))
-    total_width = sum(widths)
-    max_height = max(heights)
-    combined_image = Image.new('RGB', (total_width, max_height), (0, 0, 0))  # Utiliser RGB
-    x_offset = 0
-    for im in image_list:
-        combined_image.paste(im, (x_offset, 0))
-        x_offset += im.width
-    return combined_image
+    # 6. Fonction pour créer un seul GIF animé avec plusieurs graphiques
+    def create_single_animated_gif(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
+        # Dictionnaire pour stocker les frames de chaque graphique
+        chart_frames = {}
+        selected_chart_types = chart_type_selection
+        for chart_type in selected_chart_types:
+            # Obtenir le titre correspondant ou utiliser un titre par défaut
+            title = titles.get(chart_type, "Titre 1")
+            frames = create_animated_chart_frames(labels, values, growth, chart_type, title, frame_duration)
+            if frames:
+                chart_frames[chart_type] = frames
 
-# 6. Fonction pour créer un seul GIF animé avec plusieurs graphiques
-def create_single_animated_gif(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
-    # Dictionnaire pour stocker les frames de chaque graphique
-    chart_frames = {}
-    selected_chart_types = chart_type_selection
-    for chart_type in selected_chart_types:
-        # Obtenir le titre correspondant ou utiliser un titre par défaut
-        title = titles.get(chart_type, "Titre 1")
-        frames = create_animated_chart_frames(labels, values, growth, chart_type, title, frame_duration)
-        if frames:
-            chart_frames[chart_type] = frames
+        if not chart_frames:
+            st.error("Aucun graphique n'a pu être généré avec les données fournies.")
+            return None
 
-    if not chart_frames:
-        st.error("Aucun graphique n'a pu être généré avec les données fournies.")
-        return None
+        # Trouver le nombre maximum de frames
+        max_frames = max(len(frames) for frames in chart_frames.values())
 
-    # Trouver le nombre maximum de frames
-    max_frames = max(len(frames) for frames in chart_frames.values())
+        # Normaliser le nombre de frames pour chaque graphique
+        for chart_type, frames in chart_frames.items():
+            if len(frames) < max_frames:
+                # Répéter la dernière frame pour atteindre le nombre maximum
+                last_frame = frames[-1]
+                frames.extend([last_frame] * (max_frames - len(frames)))
+                chart_frames[chart_type] = frames
 
-    # Normaliser le nombre de frames pour chaque graphique
-    for chart_type, frames in chart_frames.items():
-        if len(frames) < max_frames:
-            # Répéter la dernière frame pour atteindre le nombre maximum
-            last_frame = frames[-1]
-            frames.extend([last_frame] * (max_frames - len(frames)))
-            chart_frames[chart_type] = frames
+        # Combiner les frames
+        combined_images = []
+        for i in range(max_frames):
+            current_images = [chart_frames[chart_type][i] for chart_type in selected_chart_types]
+            combined_image = combine_images_horizontally(current_images)
+            combined_images.append(combined_image)
 
-    # Combiner les frames
-    combined_images = []
-    for i in range(max_frames):
-        current_images = [chart_frames[chart_type][i] for chart_type in selected_chart_types]
-        combined_image = combine_images_horizontally(current_images)
-        combined_images.append(combined_image)
+        # Ajouter une pause à la fin de l'animation
+        pause_duration = 2  # Durée de la pause en secondes
+        # Convertir pause_duration en nombre de frames
+        pause_frames = int(pause_duration / frame_duration)
+        combined_images.extend([combined_images[-1]] * pause_frames)
 
-    # Ajouter une pause à la fin de l'animation
-    pause_duration = 2  # Durée de la pause en secondes
-    # Convertir pause_duration en nombre de frames
-    pause_frames = int(pause_duration / frame_duration)
-    combined_images.extend([combined_images[-1]] * pause_frames)
+        # Convertir les images en frames pour le GIF
+        try:
+            # Utiliser imageio.get_writer pour un meilleur contrôle
+            buf_gif = BytesIO()
+            with imageio.get_writer(buf_gif, format='GIF', mode='I', duration=frame_duration, loop=0) as writer:
+                for img in combined_images:
+                    writer.append_data(np.array(img))
+            buf_gif.seek(0)
+            return buf_gif
+        except Exception as e:
+            st.error(f"Erreur lors de la création du GIF unique : {e}")
+            return None
 
-    # Convertir les images en frames pour le GIF
-    try:
-        # Utiliser imageio.get_writer pour un meilleur contrôle
-        buf_gif = BytesIO()
-        with imageio.get_writer(buf_gif, format='GIF', mode='I', duration=frame_duration, loop=0) as writer:
-            for img in combined_images:
-                writer.append_data(np.array(img))
-        buf_gif.seek(0)
-        return buf_gif
-    except Exception as e:
-        st.error(f"Erreur lors de la création du GIF unique : {e}")
-        return None
+    # 7. Interface Streamlit
+    st.title("🎨 Animation Graphique Personnalisée")
+    st.markdown("""
+    Ce GIF animé montre la progression des données que vous avez fournies.
+    
+    * **Types de graphiques disponibles** :
+        * Barres horizontales
+        * Barres verticales
+        * Lignes
+        * Pareto
+    
+    Vous pouvez choisir de générer un ou plusieurs types de graphiques simultanément.
+    
+    Veuillez télécharger un fichier Excel ou CSV contenant vos données.
+    """)
 
-# 7. Interface Streamlit
-st.title("🎨 Animation Graphique Personnalisée")
-st.markdown("""
-Ce GIF animé montre la progression des données que vous avez fournies.
+    # 8. Uploader de fichier
+    uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
-* **Types de graphiques disponibles** :
-    * Barres horizontales
-    * Barres verticales
-    * Lignes
-    * Pareto
-
-Vous pouvez choisir de générer un ou plusieurs types de graphiques simultanément.
-
-Veuillez télécharger un fichier Excel ou CSV contenant vos données.
-""")
-
-# 8. Uploader de fichier
-uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
-
-if uploaded_file is not None:
-    # Lire le fichier Excel ou CSV
-    try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-            sheet_names = None  # Pas d'onglets pour les CSV
-        else:
-            # Lire le fichier Excel pour obtenir les noms des onglets
-            excel_file = pd.ExcelFile(uploaded_file)
-            sheet_names = excel_file.sheet_names
-
-            # Permettre à l'utilisateur de sélectionner un onglet
-            st.subheader("🗂️ Sélectionnez l'onglet à utiliser")
-            sheet_name = st.selectbox("Choisissez un onglet", sheet_names)
-
-            # Lire le DataFrame à partir de l'onglet sélectionné
-            df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
-
-        # Afficher un aperçu des données
-        st.subheader("🔍 Aperçu des données téléchargées")
-        st.dataframe(df.head())
-
-        # Vérifier qu'il y a au moins deux colonnes
-        if df.shape[1] < 2:
-            st.error("Le fichier doit contenir au moins deux colonnes.")
-        else:
-            # Obtenir la liste des colonnes
-            columns = df.columns.tolist()
-
-            # Permettre à l'utilisateur de sélectionner les colonnes
-            st.subheader("📝 Sélectionnez les colonnes correspondantes")
-            label_col = st.selectbox("Sélectionnez la colonne pour les **libellés**", columns)
-            value_col = st.selectbox("Sélectionnez la colonne pour les **valeurs numériques**", [col for col in columns if col != label_col])
-
-            # Optionnelle : sélection de la colonne pour la troisième dimension
-            growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
-            if growth_option:
-                # Exclure les colonnes déjà sélectionnées pour éviter les doublons
-                available_growth_cols = [col for col in columns if col != label_col and col != value_col]
-                if available_growth_cols:
-                    growth_col = st.selectbox("Sélectionnez la colonne pour la **troisième dimension**", available_growth_cols)
-                else:
-                    st.error("Aucune colonne disponible pour la troisième dimension.")
-                    growth_col = None
+    if uploaded_file is not None:
+        # Lire le fichier Excel ou CSV
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+                sheet_names = None  # Pas d'onglets pour les CSV
             else:
-                growth_col = None
+                # Lire le fichier Excel pour obtenir les noms des onglets
+                excel_file = pd.ExcelFile(uploaded_file)
+                sheet_names = excel_file.sheet_names
 
-            # Sélection du type de graphique
-            st.subheader("📊 Sélectionnez le(s) type(s) de graphique")
-            chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Pareto"]
-            chart_type_selection = st.multiselect(
-                "Sélectionnez le(s) type(s) de graphique",
-                chart_type_options,
-                default=["Barres horizontales", "Barres verticales", "Lignes", "Pareto"]
-            )
+                # Permettre à l'utilisateur de sélectionner un onglet
+                st.subheader("🗂️ Sélectionnez l'onglet à utiliser")
+                sheet_name = st.selectbox("Choisissez un onglet", sheet_names)
 
-            # Si des types de graphiques sont sélectionnés, demander des titres
-            titles = {}
-            if chart_type_selection:
-                st.subheader("🖋️ Entrez les titres des graphiques")
-                for i, chart_type in enumerate(chart_type_selection, 1):
-                    user_title = st.text_input(f"Entrez le titre pour **{chart_type}**", value=f"Titre {i}")
-                    titles[chart_type] = user_title if user_title.strip() else f"Titre {i}"
+                # Lire le DataFrame à partir de l'onglet sélectionné
+                df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+
+            # Afficher un aperçu des données
+            st.subheader("🔍 Aperçu des données téléchargées")
+            st.dataframe(df.head())
+
+            # Vérifier qu'il y a au moins deux colonnes
+            if df.shape[1] < 2:
+                st.error("Le fichier doit contenir au moins deux colonnes.")
             else:
-                st.info("Veuillez sélectionner au moins un type de graphique.")
+                # Obtenir la liste des colonnes
+                columns = df.columns.tolist()
 
-            # Ajuster la durée de l'animation
-            st.subheader("⏱️ Ajustez la vitesse de l'animation")
-            frame_duration = st.slider(
-                "Durée de chaque frame (en secondes)",
-                min_value=0.05,
-                max_value=1.0,
-                value=0.1,
-                step=0.05
-            )
+                # Permettre à l'utilisateur de sélectionner les colonnes
+                st.subheader("📝 Sélectionnez les colonnes correspondantes")
+                label_col = st.selectbox("Sélectionnez la colonne pour les **libellés**", columns)
+                value_col = st.selectbox("Sélectionnez la colonne pour les **valeurs numériques**", [col for col in columns if col != label_col])
 
-            # Bouton pour générer les graphiques
-            if st.button("🎬 Générer les graphiques"):
-                # Extraire les données
-                labels = df[label_col].astype(str)
-                values = df[value_col]
-
-                # Nettoyer les données en supprimant les lignes avec des valeurs manquantes ou non numériques
-                data = pd.DataFrame({label_col: labels, value_col: values})
-
-                # Si growth_col est sélectionné
-                if growth_col:
-                    growth = df[growth_col]
-                    data[growth_col] = growth
-                else:
-                    growth = None
-
-                # Convertir les colonnes numériques en float, coercer les erreurs et supprimer les NaN
-                data[value_col] = pd.to_numeric(data[value_col], errors='coerce')
-                if growth_col:
-                    data[growth_col] = pd.to_numeric(data[growth_col], errors='coerce')
-
-                # Supprimer les lignes avec des valeurs manquantes
-                data = data.dropna()
-
-                # Mettre à jour les listes après nettoyage
-                labels = data[label_col].tolist()
-                values = data[value_col].tolist()
-                if growth_col:
-                    growth = data[growth_col].tolist()
-                else:
-                    growth = None
-
-                # Vérifier que les listes ne sont pas vides
-                if not labels or not values:
-                    st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
-                else:
-                    # Afficher les longueurs des listes pour débogage (peut être retiré)
-                    st.write(f"Nombre de labels : {len(labels)}")
-                    st.write(f"Nombre de valeurs : {len(values)}")
-                    if growth_col:
-                        st.write(f"Nombre de valeurs de croissance : {len(growth)}")
-
-                    # Générer le GIF unique avec les types de graphiques sélectionnés
-                    try:
-                        charts_gif = create_single_animated_gif(labels, values, growth, chart_type_selection, titles, frame_duration)
-                    except Exception as e:
-                        st.error(f"Erreur lors de la création des graphiques : {e}")
-                        charts_gif = None
-
-                    # Afficher le GIF unique
-                    st.subheader("✨ Graphique animé combiné")
-                    if charts_gif:
-                        st.image(charts_gif, caption="Graphiques Combinés", use_column_width=True)
+                # Optionnelle : sélection de la colonne pour la troisième dimension
+                growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
+                if growth_option:
+                    # Exclure les colonnes déjà sélectionnées pour éviter les doublons
+                    available_growth_cols = [col for col in columns if col != label_col and col != value_col]
+                    if available_growth_cols:
+                        growth_col = st.selectbox("Sélectionnez la colonne pour la **troisième dimension**", available_growth_cols)
                     else:
-                        st.error("Aucun graphique n'a pu être généré avec les données fournies.")
-    except Exception as e:
-        st.error(f"Erreur lors du traitement du fichier : {e}")
-else:
-    st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
+                        st.error("Aucune colonne disponible pour la troisième dimension.")
+                        growth_col = None
+                else:
+                    growth_col = None
+
+                # Sélection du type de graphique
+                st.subheader("📊 Sélectionnez le(s) type(s) de graphique")
+                chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Pareto"]
+                chart_type_selection = st.multiselect(
+                    "Sélectionnez le(s) type(s) de graphique",
+                    chart_type_options,
+                    default=["Barres horizontales", "Barres verticales", "Lignes", "Pareto"]
+                )
+
+                # Si des types de graphiques sont sélectionnés, demander des titres
+                titles = {}
+                if chart_type_selection:
+                    st.subheader("🖋️ Entrez les titres des graphiques")
+                    for i, chart_type in enumerate(chart_type_selection, 1):
+                        user_title = st.text_input(f"Entrez le titre pour **{chart_type}**", value=f"Titre {i}")
+                        titles[chart_type] = user_title if user_title.strip() else f"Titre {i}"
+                else:
+                    st.info("Veuillez sélectionner au moins un type de graphique.")
+
+                # Ajuster la durée de l'animation
+                st.subheader("⏱️ Ajustez la vitesse de l'animation")
+                frame_duration = st.slider(
+                    "Durée de chaque frame (en secondes)",
+                    min_value=0.05,
+                    max_value=1.0,
+                    value=0.1,
+                    step=0.05
+                )
+
+                # Bouton pour générer les graphiques
+                if st.button("🎬 Générer les graphiques"):
+                    # Extraire les données
+                    labels = df[label_col].astype(str)
+                    values = df[value_col]
+
+                    # Nettoyer les données en supprimant les lignes avec des valeurs manquantes ou non numériques
+                    data = pd.DataFrame({label_col: labels, value_col: values})
+
+                    # Si growth_col est sélectionné
+                    if growth_col:
+                        growth = df[growth_col]
+                        data[growth_col] = growth
+                    else:
+                        growth = None
+
+                    # Convertir les colonnes numériques en float, coercer les erreurs et supprimer les NaN
+                    data[value_col] = pd.to_numeric(data[value_col], errors='coerce')
+                    if growth_col:
+                        data[growth_col] = pd.to_numeric(data[growth_col], errors='coerce')
+
+                    # Supprimer les lignes avec des valeurs manquantes
+                    data = data.dropna()
+
+                    # Mettre à jour les listes après nettoyage
+                    labels = data[label_col].tolist()
+                    values = data[value_col].tolist()
+                    if growth_col:
+                        growth = data[growth_col].tolist()
+                    else:
+                        growth = None
+
+                    # Vérifier que les listes ne sont pas vides
+                    if not labels or not values:
+                        st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
+                    else:
+                        # Afficher les longueurs des listes pour débogage (peut être retiré)
+                        st.write(f"Nombre de labels : {len(labels)}")
+                        st.write(f"Nombre de valeurs : {len(values)}")
+                        if growth_col:
+                            st.write(f"Nombre de valeurs de croissance : {len(growth)}")
+
+                        # Générer le GIF unique avec les types de graphiques sélectionnés
+                        try:
+                            charts_gif = create_single_animated_gif(labels, values, growth, chart_type_selection, titles, frame_duration)
+                        except Exception as e:
+                            st.error(f"Erreur lors de la création des graphiques : {e}")
+                            charts_gif = None
+
+                        # Afficher le GIF unique
+                        st.subheader("✨ Graphique animé combiné")
+                        if charts_gif:
+                            st.image(charts_gif, caption="Graphiques Combinés", use_column_width=True)
+                        else:
+                            st.error("Aucun graphique n'a pu être généré avec les données fournies.")
+        except Exception as e:
+            st.error(f"Erreur lors du traitement du fichier : {e}")
+    else:
+        st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
