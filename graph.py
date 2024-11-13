@@ -11,6 +11,19 @@ from matplotlib.patches import Patch  # Pour créer des légendes personnalisée
 # Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
 
+# Ajouter du CSS personnalisé pour rendre les images réactives
+st.markdown(
+    """
+    <style>
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Fonction pour créer et enregistrer les GIF animés
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
@@ -29,7 +42,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         return None
 
     if growth is not None and len(growth) != len(labels):
-        st.error("La liste des données de la deuxième colonne doit avoir la même longueur que les labels.")
+        st.error("La liste de croissance doit avoir la même longueur que les labels.")
         return None
 
     # Vérifier qu'il n'y a pas de valeurs manquantes
@@ -39,7 +52,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
     # Pour le graphique Camembert, ignorer 'growth' et avertir l'utilisateur
     if chart_type == "Camembert" and growth is not None:
-        st.warning("Le graphique Camembert ne supporte pas la troisième dimension. Ceyye colonne sera ignorée.")
+        st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
 
     # Inverser les listes pour les barres horizontales (RETIRÉ pour respecter l'ordre initial)
@@ -84,8 +97,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_ylim(-0.5, len(labels) - 0.5)
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         if growth is not None:
-            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs 1')
-            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Valeurs 2')
+            bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
         # Pas de légende pour éviter la redondance avec les labels sur l'axe
