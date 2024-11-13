@@ -20,7 +20,7 @@ def create_animated_charts(labels, values, growth=None, chart_type_selection=Non
     for idx, chart_type in enumerate(selected_chart_types):
         # Mettre à jour la barre de progression avant de commencer un nouveau graphique
         if progress_bar:
-            progress = idx / total_charts
+            progress = (idx) / total_charts
             progress_bar.progress(progress)
         
         gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
@@ -277,17 +277,17 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
         else:
             # Pour les graphiques à barres
-            # Nombre de frames pour l'animation
-            num_frames = 50  # Augmenter pour une animation plus fluide
-            frames = np.linspace(0, 1, num_frames)
-            # Préparer les textes pour les valeurs
-            value_texts = []
-            for _ in labels:
-                value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
-                                           color='white',
-                                           bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-            for i in frames:
-                try:
+            try:
+                # Nombre de frames pour l'animation
+                num_frames = 50  # Augmenter pour une animation plus fluide
+                frames = np.linspace(0, 1, num_frames)
+                # Préparer les textes pour les valeurs
+                value_texts = []
+                for _ in labels:
+                    value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
+                                               color='white',
+                                               bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
+                for i in frames:
                     current_values = [val * i for val in values]
                     if growth is not None:
                         current_growth = [g * i for g in growth]
@@ -330,9 +330,9 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
                     buf.close()
-                except Exception as e:
-                    st.error(f"Erreur lors de la génération du graphique {chart_type}: {e}")
-                    return None
+            except Exception as e:
+                st.error(f"Erreur lors de la génération du graphique {chart_type}: {e}")
+                return None
 
         if not images:
             st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
