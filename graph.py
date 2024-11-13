@@ -28,17 +28,19 @@ st.markdown(
 )
 
 # 4. Fonction pour créer et enregistrer les GIF animés
-def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
+def create_animated_charts(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
     for chart_type in selected_chart_types:
-        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
+        # Obtenir le titre correspondant ou utiliser un titre par défaut
+        title = titles.get(chart_type, "Titre 1")
+        gif_buffer = create_animated_chart(labels, values, growth, chart_type, title, frame_duration)
         if gif_buffer:
             charts[chart_type] = gif_buffer
     return charts
 
 # 5. Fonction pour créer un GIF animé pour un type de graphique spécifique
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
+def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", title="Titre 1", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
@@ -148,7 +150,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         return None
 
     if chart_type != "Camembert":
-        ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+        ax.set_title(title, fontsize=16, fontweight='bold', color='white')
         # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
         fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
 
@@ -248,7 +250,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     fig.patch.set_facecolor('#2E3440')
                     ax.set_facecolor('#3B4252')
                     ax.axis('equal')
-                    ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
+                    ax.set_title(title, fontsize=16, fontweight='bold', color='white')
 
                     # Dessiner le camembert avec les fractions actuelles
                     patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
@@ -424,6 +426,16 @@ if uploaded_file is not None:
                 default=chart_type_options
             )
 
+            # Si des types de graphiques sont sélectionnés, demander des titres
+            titles = {}
+            if chart_type_selection:
+                st.subheader("🖋️ Entrez les titres des graphiques")
+                for i, chart_type in enumerate(chart_type_selection, 1):
+                    user_title = st.text_input(f"Entrez le titre pour **{chart_type}**", value=f"Titre {i}")
+                    titles[chart_type] = user_title if user_title.strip() else f"Titre {i}"
+            else:
+                st.info("Veuillez sélectionner au moins un type de graphique.")
+
             # Ajuster la durée de l'animation
             st.subheader("⏱️ Ajustez la vitesse de l'animation")
             frame_duration = st.slider(
@@ -458,9 +470,6 @@ if uploaded_file is not None:
                 # Supprimer les lignes avec des valeurs manquantes
                 data = data.dropna()
 
-                # TRi supprimé pour respecter l'ordre initial
-                # data = data.sort_values(by=value_col, ascending=False).reset_index(drop=True)
-
                 # Mettre à jour les listes après nettoyage
                 labels = data[label_col].tolist()
                 values = data[value_col].tolist()
@@ -473,7 +482,7 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
-                    # Afficher les longueurs des listes pour débogage (PEUT ÊTRE RETIRÉ)
+                    # Afficher les longueurs des listes pour débogage (peut être retiré)
                     st.write(f"Nombre de labels : {len(labels)}")
                     st.write(f"Nombre de valeurs : {len(values)}")
                     if growth_col:
@@ -481,7 +490,7 @@ if uploaded_file is not None:
 
                     # Générer les GIFs pour les types de graphiques sélectionnés
                     try:
-                        charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
+                        charts = create_animated_charts(labels, values, growth, chart_type_selection, titles, frame_duration)
                     except Exception as e:
                         st.error(f"Erreur lors de la création des graphiques : {e}")
                         charts = None
