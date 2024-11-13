@@ -6,7 +6,6 @@ from PIL import Image
 from io import BytesIO
 import imageio
 import seaborn as sns
-import itertools
 
 # Appliquer un style moderne avec Seaborn
 sns.set_theme(style='whitegrid')
@@ -15,20 +14,14 @@ sns.set_theme(style='whitegrid')
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
-
     for chart_type in selected_chart_types:
-        st.write(f"### Génération du graphique : {chart_type}")
-        # Créer une barre de progression pour ce graphique
-        progress_bar = st.progress(0)
-        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration, progress_bar)
+        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
         if gif_buffer:
             charts[chart_type] = gif_buffer
-        # Terminer la barre de progression pour ce graphique
-        progress_bar.empty()
     return charts
 
 # Fonction pour créer un GIF animé pour un type de graphique spécifique
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15, progress_bar=None):
+def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
@@ -58,7 +51,17 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     # Utiliser une palette avec suffisamment de couleurs distinctes
-    palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
+    if num_colors <= 10:
+        palette = sns.color_palette("tab10", num_colors)
+    elif num_colors <= 20:
+        palette = sns.color_palette("tab20", num_colors)
+    else:
+        palette = sns.color_palette("hls", num_colors)
+
+    # Vérifier que la palette a le bon nombre de couleurs
+    if len(palette) != num_colors:
+        st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
+        return None
 
     images = []
 
@@ -87,51 +90,47 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         if growth is not None:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
-        ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=45, ha='right', color='white')
+        plt.xticks(rotation=45, ha='right', color='white')
         if growth is not None:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
+            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
-        # Ajustement des marges pour inclure les annotations
-        y_margin = max_value * 0.15
-        ax.set_ylim(0, max_value + y_margin)
+        ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
-        ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=45, ha='right', color='white')
+        plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
         line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
         if growth is not None:
             line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
         # Préparer les textes pour les valeurs
-        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#88C0D0', ha='center') for _ in range(len(labels))]
+        value_texts_values = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#88C0D0') for _ in range(len(labels))]
         if growth is not None:
-            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#D08770', ha='center') for _ in range(len(labels))]
+            value_texts_growth = [ax.text(0, 0, '', fontsize=10, fontweight='bold', color='#D08770') for _ in range(len(labels))]
     elif chart_type == "Camembert":
         # Pas d'axes pour un camembert
         ax.axis('equal')
+        plt.tight_layout()
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
-
-    # Ajuster les marges
-    fig.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.25)
 
     if chart_type != "Camembert":
         ax.set_title(f"Graphique {chart_type}", fontsize=16, fontweight='bold', color='white')
         # Ajouter une légende si growth est utilisé
         if growth is not None and chart_type != "Camembert":
             ax.legend(facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+        # Ajuster les marges
+        plt.tight_layout()
 
     images = []
 
@@ -144,7 +143,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         # Nombre de frames pour l'animation
         frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
         num_segments = len(values) - 1
-        num_frames = frames_per_segment * num_segments if num_segments > 0 else 1
+        num_frames = frames_per_segment * num_segments
 
         for frame in range(num_frames):
             # Déterminer le segment actuel
@@ -172,6 +171,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                 line_growth.set_data(current_x, current_y_growth)
 
             # Mettre à jour les textes des valeurs
+            # Effacer les textes précédents
             for txt in value_texts_values:
                 txt.set_text('')
             if growth is not None:
@@ -181,28 +181,26 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             if current_x:
                 # Afficher la valeur actuelle au dernier point pour 'Valeurs'
                 txt = value_texts_values[segment]
-                txt.set_position((current_x[-1], current_y_values[-1] + max_value * 0.05))
+                txt.set_position((current_x[-1], current_y_values[-1]))
                 txt.set_text(f"{int(current_y_values[-1])}")
+                txt.set_fontsize(10)
+                txt.set_fontweight('bold')
 
                 # Afficher la valeur actuelle au dernier point pour 'Croissance' si elle existe
                 if growth is not None:
                     txt_growth = value_texts_growth[segment]
-                    txt_growth.set_position((current_x[-1], current_y_growth[-1] + max_value * 0.05))
+                    txt_growth.set_position((current_x[-1], current_y_growth[-1]))
                     txt_growth.set_text(f"{int(current_y_growth[-1])}")
+                    txt_growth.set_fontsize(10)
+                    txt_growth.set_fontweight('bold')
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
-
-            # Mettre à jour la barre de progression
-            if progress_bar:
-                progress_percentage = int((frame + 1) / num_frames * 100)
-                progress_bar.progress(progress_percentage)
-
     elif chart_type == "Camembert":
         try:
             # Vérifier que la somme totale est supérieure à zéro
@@ -219,9 +217,14 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             fractions_values = [v / total for v in values]
 
             # Générer suffisamment de couleurs
-            palette = sns.color_palette("hls", len(labels))  # 'hls' peut générer de nombreuses couleurs
+            if num_colors <= 10:
+                palette = sns.color_palette("tab10", num_colors)
+            elif num_colors <= 20:
+                palette = sns.color_palette("tab20", num_colors)
+            else:
+                palette = sns.color_palette("hls", num_colors)
 
-            for idx, i in enumerate(frames):
+            for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
 
                 # Vérifier que la somme des fractions est supérieure à zéro
@@ -240,6 +243,10 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     for text in texts:
                         text.set_color('white')
 
+                    # Ajouter une légende si growth est utilisé (bien que nous l'ignorions ici)
+                    if growth is not None:
+                        ax.legend(['Valeurs'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
                     plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
@@ -247,11 +254,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
                     buf.close()
-
-                    # Mettre à jour la barre de progression
-                    if progress_bar:
-                        progress_percentage = int((idx + 1) / num_frames * 100)
-                        progress_bar.progress(progress_percentage)
         except Exception as e:
             st.error(f"Erreur lors de la création du graphique camembert : {e}")
             return None
@@ -266,60 +268,49 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
                                        color='white',
                                        bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-        for idx, i in enumerate(frames):
+        for i in frames:
             current_values = [val * i for val in values]
             if growth is not None:
                 current_growth = [g * i for g in growth]
 
             if chart_type == "Barres horizontales":
                 # Mettre à jour les largeurs des barres
-                for idx_bar, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
                     bar_value.set_width(val)
                 if growth is not None:
-                    for idx_bar, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
                         bar_growth.set_width(gro)
                         bar_growth.set_x(val)
                 # Mettre à jour les positions des valeurs
-                for idx_text, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
                     total_width = bar_value.get_width()
                     if growth is not None:
-                        total_width += bars_growth[idx_text].get_width()
+                        total_width += bars_growth[idx].get_width()
                     text.set_position((total_width + max_value*0.01, bar_value.get_y() + bar_value.get_height()/2))
                     text.set_text(f"{int(total_width)}")
             elif chart_type == "Barres verticales":
                 # Mettre à jour les hauteurs des barres
-                for idx_bar, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
                     bar_value.set_height(val)
                 if growth is not None:
-                    for idx_bar, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
                         bar_growth.set_height(gro)
                         bar_growth.set_y(val)
                 # Mettre à jour les positions des valeurs
-                for idx_text, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
                     total_height = bar_value.get_height()
                     if growth is not None:
-                        total_height += bars_growth[idx_text].get_height()
+                        total_height += bars_growth[idx].get_height()
                     text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
                     text.set_text(f"{int(total_height)}")
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
+            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
-
-            # Mettre à jour la barre de progression
-            if progress_bar:
-                progress_percentage = int((idx + 1) / num_frames * 100)
-                progress_bar.progress(progress_percentage)
-
-    # Vérifier que toutes les images ont la même taille
-    shapes = [img.size for img in images]
-    if len(set(shapes)) > 1:
-        st.error("Les images générées n'ont pas toutes la même taille. Vérifiez que tous les éléments du graphique restent constants en taille.")
-        return None
 
     if not images:
         st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
@@ -369,18 +360,8 @@ if uploaded_file is not None:
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
-            sheet_names = None  # Pas d'onglets pour les CSV
         else:
-            # Lire le fichier Excel pour obtenir les noms des onglets
-            excel_file = pd.ExcelFile(uploaded_file)
-            sheet_names = excel_file.sheet_names
-
-            # Permettre à l'utilisateur de sélectionner un onglet
-            st.subheader("🗂️ Sélectionnez l'onglet à utiliser")
-            sheet_name = st.selectbox("Choisissez un onglet", sheet_names)
-
-            # Lire le DataFrame à partir de l'onglet sélectionné
-            df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+            df = pd.read_excel(uploaded_file)
 
         # Afficher un aperçu des données
         st.subheader("🔍 Aperçu des données téléchargées")
