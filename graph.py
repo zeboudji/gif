@@ -27,55 +27,35 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 4. Fonction pour créer et enregistrer les GIF animés
-def create_animated_charts(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
-    charts = {}
-    selected_chart_types = chart_type_selection
-    for chart_type in selected_chart_types:
-        # Obtenir le titre correspondant ou utiliser un titre par défaut
-        title = titles.get(chart_type, "Titre 1")
-        gif_buffer = create_animated_chart(labels, values, growth, chart_type, title, frame_duration)
-        if gif_buffer:
-            charts[chart_type] = gif_buffer
-    return charts
-
-# 5. Fonction pour créer un GIF animé pour un type de graphique spécifique
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", title="Titre 1", frame_duration=0.15):
+# 4. Fonction pour créer des frames pour un graphique spécifique
+def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres horizontales", title="Titre 1", frame_duration=0.15):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
-        return None
-
+        return []
     if growth is not None and len(growth) != len(labels):
         st.error("La liste de croissance doit avoir la même longueur que les labels.")
-        return None
-
+        return []
     # Vérifier qu'il n'y a pas de valeurs manquantes
     if any(pd.isnull(labels)) or any(pd.isnull(values)) or (growth is not None and any(pd.isnull(growth))):
         st.error("Les données ne doivent pas contenir de valeurs manquantes.")
-        return None
-
+        return []
     # Pour le graphique Camembert, ignorer 'growth' et avertir l'utilisateur
     if chart_type == "Camembert" and growth is not None:
         st.warning("Le graphique Camembert ne supporte pas la troisième dimension (croissance). La colonne de croissance sera ignorée.")
         growth = None
-
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
-
     # Vérifier que la palette a le bon nombre de couleurs
     if len(palette) != num_colors:
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
-        return None
-
+        return []
     # Création de la figure et des axes avec taille fixe
     fig, ax = plt.subplots(figsize=(8, 6), dpi=100)  # Taille et résolution fixes
-
     # Appliquer un fond moderne
     fig.patch.set_facecolor('#2E3440')
     ax.set_facecolor('#3B4252')
-
     # Changer la couleur des axes et du texte
     ax.spines['bottom'].set_color('white')
     ax.spines['left'].set_color('white')
@@ -84,10 +64,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     ax.tick_params(axis='x', colors='white')
     ax.tick_params(axis='y', colors='white')
     ax.title.set_color('white')
-
     # Fixer les limites des axes pour éviter les sauts
     max_value = max([v + g if growth else v for v, g in zip(values, growth or [0]*len(values))]) * 1.1 if values else 1
-
     if chart_type == "Barres horizontales":
         ax.set_xlim(0, max_value)
         ax.set_ylim(-0.5, len(labels) - 0.5)
@@ -97,8 +75,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
-        # Pas de légende pour éviter la redondance avec les labels sur l'axe
-
     elif chart_type == "Barres verticales":
         ax.set_ylim(0, max_value)
         ax.set_xlim(-0.5, len(labels) - 0.5)
@@ -110,8 +86,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
-        # Pas de légende pour éviter la redondance avec les labels sur l'axe
-
     elif chart_type == "Lignes":
         # Ajustement des marges pour inclure les annotations
         y_margin = max_value * 0.15
@@ -133,12 +107,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             ax.legend([line_values, line_growth], ['Valeurs', 'Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
         else:
             ax.legend([line_values], ['Valeurs'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-
     elif chart_type == "Camembert":
         # Pas d'axes pour un camembert
         ax.axis('equal')
         # Dessiner le camembert une fois pour récupérer les patches
-        patches, texts = ax.pie(values, labels=labels, colors=palette, startangle=90, counterclock=False)
+        patches, texts = ax.pie([0]*len(values), labels=labels, colors=palette, startangle=90, counterclock=False)
         for text in texts:
             text.set_color('white')
         # Créer une légende correspondante aux labels
@@ -147,15 +120,16 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                   facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
     else:
         st.error("Type de graphique non supporté pour cette animation.")
-        return None
+        return []
 
+    # Titre du graphique sauf pour le camembert (géré différemment)
     if chart_type != "Camembert":
         ax.set_title(title, fontsize=16, fontweight='bold', color='white')
         # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
         fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
 
-    images = []
-
+    frames = []
+    
     if chart_type == "Lignes":
         x_data = np.arange(len(values))
         y_values = np.array(values)
@@ -221,58 +195,48 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
-            images.append(image)
+            frames.append(image)
             buf.close()
 
     elif chart_type == "Camembert":
         try:
-            # Vérifier que la somme totale est supérieure à zéro
-            total = sum([v for v in values])
-            if total <= 0:
-                st.error("La somme des valeurs pour le graphique camembert doit être supérieure à zéro.")
-                return None
-
             # Nombre de frames pour l'animation
             num_frames = 50  # Plus de frames pour une animation fluide
-            frames = np.linspace(0.01, 1, num_frames)
+            frames_values = np.linspace(0.0, 1.0, num_frames)
 
-            # Calculer les fractions pour chaque valeur
             fractions_values = [v / total for v in values]
 
-            for i in frames:
+            for i in frames_values:
                 current_fractions = [fraction * i for fraction in fractions_values]
+                # Mettre à jour le camembert
+                ax.clear()
+                # Appliquer un fond moderne
+                fig.patch.set_facecolor('#2E3440')
+                ax.set_facecolor('#3B4252')
+                ax.axis('equal')
+                ax.set_title(title, fontsize=16, fontweight='bold', color='white')
 
-                # Vérifier que la somme des fractions est supérieure à zéro
-                if sum(current_fractions) > 0:
-                    # Mettre à jour le camembert
-                    ax.clear()
-                    # Appliquer un fond moderne
-                    fig.patch.set_facecolor('#2E3440')
-                    ax.set_facecolor('#3B4252')
-                    ax.axis('equal')
-                    ax.set_title(title, fontsize=16, fontweight='bold', color='white')
+                # Dessiner le camembert avec les fractions actuelles
+                patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
+                for text in texts:
+                    text.set_color('white')
 
-                    # Dessiner le camembert avec les fractions actuelles
-                    patches, texts = ax.pie(current_fractions, labels=labels, colors=palette, startangle=90, counterclock=False)
-                    # Changer la couleur des textes
-                    for text in texts:
-                        text.set_color('white')
+                # Créer une légende correspondante aux labels
+                handles = [Patch(facecolor=palette[i], label=labels[i]) for i in range(len(labels))]
+                ax.legend(handles=handles, title='Légende', loc='center left', bbox_to_anchor=(1, 0.5),
+                          facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
-                    # Créer une légende correspondante aux labels
-                    handles = [Patch(facecolor=palette[i], label=labels[i]) for i in range(len(labels))]
-                    ax.legend(handles=handles, title='Légende', loc='center left', bbox_to_anchor=(1, 0.5),
-                              facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-
-                    # Enregistrer l'image dans un buffer
-                    buf = BytesIO()
-                    plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
-                    buf.seek(0)
-                    image = Image.open(buf).convert('RGBA')
-                    images.append(image)
-                    buf.close()
+                # Enregistrer l'image dans un buffer
+                buf = BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
+                buf.seek(0)
+                image = Image.open(buf).convert('RGBA')
+                frames.append(image)
+                buf.close()
         except Exception as e:
             st.error(f"Erreur lors de la création du graphique camembert : {e}")
-            return None
+            return []
+
     else:
         # Pour les graphiques à barres
         # Nombre de frames pour l'animation
@@ -325,33 +289,84 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
-            images.append(image)
+            frames.append(image)
             buf.close()
 
-    if not images:
+    if not frames:
         st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
-        return None
+        return []
+    
+    return frames
 
+# 5. Fonction pour combiner des images horizontalement
+from PIL import Image
+
+def combine_images_horizontally(image_list):
+    if not image_list:
+        return None
+    widths, heights = zip(*(i.size for i in image_list))
+    total_width = sum(widths)
+    max_height = max(heights)
+    combined_image = Image.new('RGBA', (total_width, max_height), (0, 0, 0, 0))
+    x_offset = 0
+    for im in image_list:
+        combined_image.paste(im, (x_offset, 0))
+        x_offset += im.width
+    return combined_image
+
+# 6. Fonction pour créer un seul GIF animé avec plusieurs graphiques
+def create_single_animated_gif(labels, values, growth=None, chart_type_selection=None, titles=None, frame_duration=0.15):
+    # Dictionnaire pour stocker les frames de chaque graphique
+    chart_frames = {}
+    selected_chart_types = chart_type_selection
+    for chart_type in selected_chart_types:
+        # Obtenir le titre correspondant ou utiliser un titre par défaut
+        title = titles.get(chart_type, "Titre 1")
+        frames = create_animated_chart_frames(labels, values, growth, chart_type, title, frame_duration)
+        if frames:
+            chart_frames[chart_type] = frames
+    
+    if not chart_frames:
+        st.error("Aucun graphique n'a pu être généré avec les données fournies.")
+        return None
+    
+    # Trouver le nombre maximum de frames
+    max_frames = max(len(frames) for frames in chart_frames.values())
+    
+    # Normaliser le nombre de frames pour chaque graphique
+    for chart_type, frames in chart_frames.items():
+        if len(frames) < max_frames:
+            # Répéter la dernière frame pour atteindre le nombre maximum
+            last_frame = frames[-1]
+            frames.extend([last_frame] * (max_frames - len(frames)))
+            chart_frames[chart_type] = frames
+    
+    # Combiner les frames
+    combined_images = []
+    for i in range(max_frames):
+        current_images = [chart_frames[chart_type][i] for chart_type in selected_chart_types]
+        combined_image = combine_images_horizontally(current_images)
+        combined_images.append(combined_image)
+    
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
-    durations = [frame_duration] * len(images)
-    durations[-1] += pause_duration  # Augmenter la durée de la dernière frame
-
-    plt.close(fig)
-
+    # Convertir pause_duration en nombre de frames
+    pause_frames = int(pause_duration / frame_duration)
+    combined_images.extend([combined_images[-1]] * pause_frames)
+    
     # Convertir les images en frames pour le GIF
     try:
-        frames_gif = [np.array(img) for img in images]
+        frames_gif = [np.array(img) for img in combined_images]
         # Créer le GIF
         buf_gif = BytesIO()
-        imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=durations, loop=0)
+        imageio.mimsave(buf_gif, frames_gif, format='GIF', duration=[frame_duration] * len(combined_images), loop=0)
         buf_gif.seek(0)
         return buf_gif
     except Exception as e:
-        st.error(f"Erreur lors de la création du GIF : {e}")
+        st.error(f"Erreur lors de la création du GIF unique : {e}")
         return None
 
-# 6. Interface Streamlit
+# 7. Interface Streamlit
 st.title("🎨 Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
@@ -367,7 +382,7 @@ Vous pouvez choisir de générer un ou plusieurs types de graphiques simultaném
 Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
 
-# 7. Uploader de fichier
+# 8. Uploader de fichier
 uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
@@ -488,31 +503,17 @@ if uploaded_file is not None:
                     if growth_col:
                         st.write(f"Nombre de valeurs de croissance : {len(growth)}")
 
-                    # Générer les GIFs pour les types de graphiques sélectionnés
+                    # Générer le GIF unique avec les types de graphiques sélectionnés
                     try:
-                        charts = create_animated_charts(labels, values, growth, chart_type_selection, titles, frame_duration)
+                        charts_gif = create_single_animated_gif(labels, values, growth, chart_type_selection, titles, frame_duration)
                     except Exception as e:
                         st.error(f"Erreur lors de la création des graphiques : {e}")
-                        charts = None
+                        charts_gif = None
 
-                    # Afficher les graphiques
-                    st.subheader("✨ Graphiques animés")
-                    if charts:
-                        cols_per_row = 2  # Nombre de colonnes par rangée
-                        chart_types = list(charts.keys())
-                        # Split the chart_types into chunks of size cols_per_row
-                        rows = [chart_types[i:i + cols_per_row] for i in range(0, len(chart_types), cols_per_row)]
-                        for row in rows:
-                            # Si la dernière rangée n'a pas assez de graphiques, remplir avec None
-                            if len(row) < cols_per_row:
-                                row += [None] * (cols_per_row - len(row))
-                            cols = st.columns(cols_per_row)
-                            for col, chart_type in zip(cols, row):
-                                with col:
-                                    if chart_type:
-                                        st.image(charts[chart_type], caption=f"Graphique {chart_type}", use_column_width=True)
-                                    else:
-                                        st.empty()  # Laisser l'espace vide
+                    # Afficher le GIF unique
+                    st.subheader("✨ Graphique animé combiné")
+                    if charts_gif:
+                        st.image(charts_gif, caption="Graphiques Combinés", use_column_width=True)
                     else:
                         st.error("Aucun graphique n'a pu être généré avec les données fournies.")
     except Exception as e:
