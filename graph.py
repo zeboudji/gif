@@ -51,17 +51,20 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     # Utiliser une palette avec suffisamment de couleurs distinctes
-    if num_colors <= 10:
-        palette = sns.color_palette("tab10", num_colors)
-    elif num_colors <= 20:
-        palette = sns.color_palette("tab20", num_colors)
-    else:
-        palette = sns.color_palette("hls", num_colors)
+    palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
 
     # Vérifier que la palette a le bon nombre de couleurs
     if len(palette) != num_colors:
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
         return None
+
+    # Ajouter des messages de débogage
+    st.write(f"Création du graphique: {chart_type}")
+    st.write(f"Nombre de labels: {len(labels)}")
+    st.write(f"Nombre de valeurs: {len(values)}")
+    if growth is not None:
+        st.write(f"Nombre de valeurs de croissance: {len(growth)}")
+    st.write(f"Nombre de couleurs dans la palette: {len(palette)}")
 
     images = []
 
@@ -90,7 +93,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         if growth is not None:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
+            bars_growth = ax.barh(labels, [0]*len(values), left=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.barh(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Barres verticales":
@@ -100,7 +103,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         plt.xticks(rotation=45, ha='right', color='white')
         if growth is not None:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white', label='Valeurs')
-            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='#88C0D0', edgecolor='white', label='Croissance')
+            bars_growth = ax.bar(labels, [0]*len(values), bottom=[0]*len(values), color='lightblue', edgecolor='white', label='Croissance')
         else:
             bars_values = ax.bar(labels, [0]*len(values), color=palette, edgecolor='white')
     elif chart_type == "Lignes":
@@ -217,12 +220,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             fractions_values = [v / total for v in values]
 
             # Générer suffisamment de couleurs
-            if num_colors <= 10:
-                palette = sns.color_palette("tab10", num_colors)
-            elif num_colors <= 20:
-                palette = sns.color_palette("tab20", num_colors)
-            else:
-                palette = sns.color_palette("hls", num_colors)
+            palette = sns.color_palette("hls", len(labels))  # 'hls' peut générer de nombreuses couleurs
 
             for i in frames:
                 current_fractions = [fraction * i for fraction in fractions_values]
@@ -245,7 +243,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
                     # Ajouter une légende si growth est utilisé (bien que nous l'ignorions ici)
                     if growth is not None:
-                        ax.legend(['Valeurs'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
+                        ax.legend(['Valeurs + Croissance'], facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
 
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
@@ -337,7 +335,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
 # Interface Streamlit
 st.set_page_config(page_title="Animation Graphique Personnalisée", layout="wide")
-st.title("🎨 Animation Graphique Personnalisée")
+st.title("Animation Graphique Personnalisée")
 st.markdown("""
 Ce GIF animé montre la progression des données que vous avez fournies.
 
@@ -353,7 +351,7 @@ Veuillez télécharger un fichier Excel ou CSV contenant vos données.
 """)
 
 # Uploader de fichier
-uploaded_file = st.file_uploader("📁 Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
+uploaded_file = st.file_uploader("Veuillez télécharger un fichier Excel ou CSV avec vos données.", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
     # Lire le fichier Excel ou CSV
@@ -364,7 +362,7 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
 
         # Afficher un aperçu des données
-        st.subheader("🔍 Aperçu des données téléchargées")
+        st.subheader("Aperçu des données téléchargées")
         st.dataframe(df.head())
 
         # Vérifier qu'il y a au moins deux colonnes
@@ -375,18 +373,17 @@ if uploaded_file is not None:
             columns = df.columns.tolist()
 
             # Permettre à l'utilisateur de sélectionner les colonnes
-            st.subheader("📝 Sélectionnez les colonnes correspondantes")
-            label_col = st.selectbox("Sélectionnez la colonne pour les **libellés**", columns)
-            value_col_options = [col for col in columns if col != label_col]
-            value_col = st.selectbox("Sélectionnez la colonne pour les **valeurs numériques**", value_col_options)
+            st.subheader("Sélectionnez les colonnes correspondantes")
+            label_col = st.selectbox("Sélectionnez la colonne pour les libellés", columns)
+            value_col = st.selectbox("Sélectionnez la colonne pour les valeurs numériques", [col for col in columns if col != label_col])
 
             # Optionnelle : sélection de la colonne pour la troisième dimension
             growth_option = st.checkbox("Ajouter une colonne pour une troisième dimension (ex: croissance)")
             if growth_option:
                 # Exclure les colonnes déjà sélectionnées pour éviter les doublons
-                available_growth_cols = [col for col in columns if col not in [label_col, value_col]]
+                available_growth_cols = [col for col in columns if col != label_col and col != value_col]
                 if available_growth_cols:
-                    growth_col = st.selectbox("Sélectionnez la colonne pour la **troisième dimension**", available_growth_cols)
+                    growth_col = st.selectbox("Sélectionnez la colonne pour la troisième dimension", available_growth_cols)
                 else:
                     st.error("Aucune colonne disponible pour la troisième dimension.")
                     growth_col = None
@@ -394,16 +391,16 @@ if uploaded_file is not None:
                 growth_col = None
 
             # Sélection du type de graphique
-            st.subheader("📊 Sélectionnez le(s) type(s) de graphique")
+            st.subheader("Sélectionnez le(s) type(s) de graphique")
             chart_type_options = ["Barres horizontales", "Barres verticales", "Lignes", "Camembert"]
             chart_type_selection = st.multiselect(
-                "Choisissez le(s) type(s) de graphique à générer",
+                "Sélectionnez le(s) type(s) de graphique",
                 chart_type_options,
-                default=["Barres horizontales"]
+                default=chart_type_options
             )
 
             # Ajuster la durée de l'animation
-            st.subheader("⏱️ Ajustez la vitesse de l'animation")
+            st.subheader("Ajustez la vitesse de l'animation")
             frame_duration = st.slider(
                 "Durée de chaque frame (en secondes)",
                 min_value=0.05,
@@ -413,7 +410,7 @@ if uploaded_file is not None:
             )
 
             # Bouton pour générer les graphiques
-            if st.button("🎬 Générer les graphiques"):
+            if st.button("Générer les graphiques"):
                 # Extraire les données
                 labels = df[label_col].astype(str)
                 values = df[value_col]
@@ -436,9 +433,6 @@ if uploaded_file is not None:
                 # Supprimer les lignes avec des valeurs manquantes
                 data = data.dropna()
 
-                # Trier les données par valeur décroissante pour une meilleure lisibilité
-                data = data.sort_values(by=value_col, ascending=False).reset_index(drop=True)
-
                 # Mettre à jour les listes après nettoyage
                 labels = data[label_col].tolist()
                 values = data[value_col].tolist()
@@ -451,6 +445,12 @@ if uploaded_file is not None:
                 if not labels or not values:
                     st.error("Aucune donnée valide trouvée après le nettoyage. Veuillez vérifier votre fichier.")
                 else:
+                    # Afficher les longueurs des listes pour débogage
+                    st.write(f"Nombre de labels : {len(labels)}")
+                    st.write(f"Nombre de valeurs : {len(values)}")
+                    if growth_col:
+                        st.write(f"Nombre de valeurs de croissance : {len(growth)}")
+
                     # Générer les GIFs pour les types de graphiques sélectionnés
                     try:
                         charts = create_animated_charts(labels, values, growth, chart_type_selection, frame_duration)
@@ -459,7 +459,7 @@ if uploaded_file is not None:
                         charts = None
 
                     # Afficher les graphiques
-                    st.subheader("✨ Graphiques animés")
+                    st.subheader("Graphiques animés")
                     if charts:
                         cols_per_row = 2  # Nombre de colonnes par ligne
                         rows = [chart_type_selection[i:i + cols_per_row] for i in range(0, len(chart_type_selection), cols_per_row)]
