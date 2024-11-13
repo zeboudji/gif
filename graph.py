@@ -16,10 +16,8 @@ def create_animated_charts(labels, values, growth=None, chart_type_selection=Non
     charts = {}
     selected_chart_types = chart_type_selection
     total_charts = len(selected_chart_types)
-    chart_counter = 0
 
     for chart_type in selected_chart_types:
-        chart_counter += 1
         st.write(f"### Génération du graphique : {chart_type}")
         # Créer une barre de progression pour ce graphique
         progress_bar = st.progress(0)
@@ -109,7 +107,8 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("Valeurs", fontsize=12, fontweight='bold', color='white')
         ax.set_xlabel("Labels", fontsize=12, fontweight='bold', color='white')
-        plt.xticks(range(len(labels)), labels, rotation=45, ha='right', color='white')
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=45, ha='right', color='white')
         line_values, = ax.plot([], [], color='#88C0D0', marker='o', linewidth=3, label='Valeurs')
         if growth is not None:
             line_growth, = ax.plot([], [], color='#D08770', marker='s', linewidth=3, label='Croissance')
@@ -120,7 +119,6 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
     elif chart_type == "Camembert":
         # Pas d'axes pour un camembert
         ax.axis('equal')
-        plt.tight_layout()
     else:
         st.error("Type de graphique non supporté pour cette animation.")
         return None
@@ -197,7 +195,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+            plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
@@ -248,7 +246,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
-                    plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+                    plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
                     buf.seek(0)
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
@@ -310,7 +308,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
 
             # Enregistrer l'image dans un buffer
             buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+            plt.savefig(buf, format='png', facecolor=fig.get_facecolor())
             buf.seek(0)
             image = Image.open(buf).convert('RGBA')
             images.append(image)
