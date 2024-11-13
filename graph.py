@@ -29,17 +29,18 @@ st.markdown(
 
 # 4. Fonction pour créer des frames pour un graphique spécifique
 def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres horizontales", title="Titre 1", frame_duration=0.15):
+    frames = []  # Assurez-vous que frames est une liste
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
-        return []
+        return frames
     if growth is not None and len(growth) != len(labels):
         st.error("La liste de croissance doit avoir la même longueur que les labels.")
-        return []
+        return frames
     # Vérifier qu'il n'y a pas de valeurs manquantes
     if any(pd.isnull(labels)) or any(pd.isnull(values)) or (growth is not None and any(pd.isnull(growth))):
         st.error("Les données ne doivent pas contenir de valeurs manquantes.")
-        return []
+        return frames
     # Pour le graphique Pareto, trier les données par ordre décroissant
     if chart_type == "Pareto":
         df_pareto = pd.DataFrame({
@@ -49,14 +50,14 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
         df_pareto = df_pareto.sort_values(by='Values', ascending=False).reset_index(drop=True)
         labels = df_pareto['Labels'].tolist()
         values = df_pareto['Values'].tolist()
-    
+
     # Choisir une palette de couleurs moderne et robuste
     num_colors = len(labels)
     palette = sns.color_palette("hls", num_colors)  # 'hls' est adapté pour de nombreuses couleurs
     # Vérifier que la palette a le bon nombre de couleurs
     if len(palette) != num_colors:
         st.error(f"La palette de couleurs générée ({len(palette)} couleurs) ne correspond pas au nombre de labels ({num_colors}).")
-        return []
+        return frames
     # Création de la figure et des axes avec taille fixe
     fig, ax = plt.subplots(figsize=(8, 6), dpi=100)  # Taille et résolution fixes
     # Appliquer un fond moderne
@@ -122,52 +123,50 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
             ax.set_title(title, fontsize=16, fontweight='bold', color='white', pad=20)
         else:
             st.error("Type de graphique non supporté pour cette animation.")
-            return []
-    
+            return frames
+
         # Titre du graphique sauf pour le Pareto (géré différemment)
         if chart_type != "Pareto":
             ax.set_title(title, fontsize=16, fontweight='bold', color='white')
             # Ajuster les marges pour laisser de l'espace à la légende si nécessaire
             fig.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.25)
-    
-        frames = []
-        
+
         if chart_type == "Lignes":
             x_data = np.arange(len(values))
             y_values = np.array(values)
             if growth is not None:
                 y_growth = np.array(growth)
-    
+
             # Nombre de frames pour l'animation
             frames_per_segment = 30  # Plus de frames pour une animation fluide entre les points
             num_segments = len(values) - 1
             num_frames = frames_per_segment * num_segments
-    
+
             for frame in range(num_frames):
                 # Déterminer le segment actuel
                 segment = frame // frames_per_segment
                 progress = (frame % frames_per_segment) / frames_per_segment
-    
+
                 # Construire les données jusqu'au point actuel
                 current_x = x_data[:segment+1].tolist()
                 current_y_values = y_values[:segment+1].tolist()
-    
+
                 if segment < num_segments:
                     # Interpoler le point suivant
                     next_x = x_data[segment] + progress * (x_data[segment+1] - x_data[segment])
                     next_y_values = y_values[segment] + progress * (y_values[segment+1] - y_values[segment])
                     current_x.append(next_x)
                     current_y_values.append(next_y_values)
-    
+
                 line_values.set_data(current_x, current_y_values)
-    
+
                 if growth is not None:
                     current_y_growth = y_growth[:segment+1].tolist()
                     if segment < num_segments:
                         next_y_growth = y_growth[segment] + progress * (y_growth[segment+1] - y_growth[segment])
                         current_y_growth.append(next_y_growth)
                     line_growth.set_data(current_x, current_y_growth)
-    
+
                 # Mettre à jour les textes des valeurs
                 # Effacer les textes précédents
                 for txt in value_texts_values:
@@ -175,7 +174,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 if growth is not None:
                     for txt in value_texts_growth:
                         txt.set_text('')
-    
+
                 if current_x:
                     # Afficher la valeur actuelle au dernier point pour 'Valeurs'
                     txt = value_texts_values[segment]
@@ -183,7 +182,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                     txt.set_text(f"{int(current_y_values[-1])}")
                     txt.set_fontsize(10)
                     txt.set_fontweight('bold')
-    
+
                     # Afficher la valeur actuelle au dernier point pour 'Croissance' si elle existe
                     if growth is not None:
                         txt_growth = value_texts_growth[segment]
@@ -191,7 +190,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                         txt_growth.set_text(f"{int(current_y_growth[-1])}")
                         txt_growth.set_fontsize(10)
                         txt_growth.set_fontweight('bold')
-    
+
                 # Enregistrer l'image dans un buffer
                 buf = BytesIO()
                 plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
@@ -199,44 +198,44 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                 frames.append(image)
                 buf.close()
-    
+
         elif chart_type == "Pareto":
             try:
                 # Calculer les valeurs cumulées
                 cumulative = np.cumsum(values)
                 cumulative_percentage = 100 * cumulative / cumulative[-1]
-    
+
                 # Nombre de frames pour l'animation
                 num_frames = 50  # Plus de frames pour une animation fluide
-    
+
                 frames_values = np.linspace(0, 1, num_frames)
                 frames_cumulative = np.linspace(0, 1, num_frames)
-    
+
                 for i in frames_values:
                     current_values = [v * i for v in values]
                     current_cumulative = [c * i for c in cumulative_percentage]
-    
+
                     ax.clear()
                     # Appliquer un fond moderne
                     fig.patch.set_facecolor('#2E3440')
                     ax.set_facecolor('#3B4252')
                     ax.axis('off')  # On cache les axes pour une meilleure présentation du Pareto
                     ax.set_title(title, fontsize=16, fontweight='bold', color='white', pad=20)
-    
+
                     # Dessiner les barres
                     ax.bar(labels, current_values, color=palette, edgecolor='white')
-    
+
                     # Dessiner la ligne cumulée
                     ax2 = ax.twinx()
                     ax2.plot(labels, current_cumulative, color='red', marker='o', linestyle='-', linewidth=2)
                     ax2.set_ylim(0, 100)
                     ax2.axis('off')  # On cache les axes secondaires
-    
+
                     # Ajouter des annotations pour la ligne cumulée
                     for j, cp in enumerate(current_cumulative):
                         if cp > 0:
                             ax2.text(j, cp, f"{cp:.1f}%", color='red', ha='center', va='bottom', fontsize=8, fontweight='bold')
-    
+
                     # Créer une légende
                     handles = [
                         Patch(facecolor=palette[i], label=labels[i]) for i in range(len(labels))
@@ -244,7 +243,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                     handles.append(Patch(facecolor='red', label='Cumul (%)'))
                     ax.legend(handles=handles, title='Légende', loc='upper left', bbox_to_anchor=(1, 1),
                               facecolor='#4C566A', edgecolor='none', labelcolor='white', fontsize=10)
-    
+
                     # Enregistrer l'image dans un buffer
                     buf = BytesIO()
                     plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
@@ -254,7 +253,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                     buf.close()
             except Exception as e:
                 st.error(f"Erreur lors de la création du graphique Pareto : {e}")
-                return []
+                return frames
         else:
             # Pour les graphiques à barres
             # Nombre de frames pour l'animation
@@ -270,7 +269,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 current_values = [val * i for val in values]
                 if growth is not None:
                     current_growth = [g * i for g in growth]
-    
+
                 if chart_type == "Barres horizontales":
                     # Mettre à jour les largeurs des barres
                     for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
@@ -301,7 +300,7 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                             total_height += bars_growth[idx].get_height()
                         text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
                         text.set_text(f"{int(total_height)}")
-    
+
                 # Enregistrer l'image dans un buffer
                 buf = BytesIO()
                 plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=100)
@@ -309,11 +308,9 @@ def create_animated_chart_frames(labels, values, growth=None, chart_type="Barres
                 image = Image.open(buf).convert('RGB')  # Convertir en RGB pour éviter les problèmes
                 frames.append(image)
                 buf.close()
-    
+
         if not frames:
             st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
-            return []
-    
         return frames
 
 # 5. Fonction pour combiner des images horizontalement
@@ -341,14 +338,14 @@ def create_single_animated_gif(labels, values, growth=None, chart_type_selection
         frames = create_animated_chart_frames(labels, values, growth, chart_type, title, frame_duration)
         if frames:
             chart_frames[chart_type] = frames
-    
+
     if not chart_frames:
         st.error("Aucun graphique n'a pu être généré avec les données fournies.")
         return None
-    
+
     # Trouver le nombre maximum de frames
     max_frames = max(len(frames) for frames in chart_frames.values())
-    
+
     # Normaliser le nombre de frames pour chaque graphique
     for chart_type, frames in chart_frames.items():
         if len(frames) < max_frames:
@@ -356,20 +353,20 @@ def create_single_animated_gif(labels, values, growth=None, chart_type_selection
             last_frame = frames[-1]
             frames.extend([last_frame] * (max_frames - len(frames)))
             chart_frames[chart_type] = frames
-    
+
     # Combiner les frames
     combined_images = []
     for i in range(max_frames):
         current_images = [chart_frames[chart_type][i] for chart_type in selected_chart_types]
         combined_image = combine_images_horizontally(current_images)
         combined_images.append(combined_image)
-    
+
     # Ajouter une pause à la fin de l'animation
     pause_duration = 2  # Durée de la pause en secondes
     # Convertir pause_duration en nombre de frames
     pause_frames = int(pause_duration / frame_duration)
     combined_images.extend([combined_images[-1]] * pause_frames)
-    
+
     # Convertir les images en frames pour le GIF
     try:
         # Utiliser imageio.get_writer pour un meilleur contrôle
@@ -537,4 +534,3 @@ if uploaded_file is not None:
         st.error(f"Erreur lors du traitement du fichier : {e}")
 else:
     st.info("Veuillez télécharger un fichier Excel ou CSV pour générer les graphiques animés.")
-
