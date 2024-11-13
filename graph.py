@@ -15,14 +15,23 @@ sns.set_theme(style='whitegrid')
 def create_animated_charts(labels, values, growth=None, chart_type_selection=None, frame_duration=0.15):
     charts = {}
     selected_chart_types = chart_type_selection
+    total_charts = len(selected_chart_types)
+    chart_counter = 0
+
     for chart_type in selected_chart_types:
-        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration)
+        chart_counter += 1
+        st.write(f"### Génération du graphique : {chart_type}")
+        # Créer une barre de progression pour ce graphique
+        progress_bar = st.progress(0)
+        gif_buffer = create_animated_chart(labels, values, growth, chart_type, frame_duration, progress_bar)
         if gif_buffer:
             charts[chart_type] = gif_buffer
+        # Terminer la barre de progression pour ce graphique
+        progress_bar.empty()
     return charts
 
 # Fonction pour créer un GIF animé pour un type de graphique spécifique
-def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15):
+def create_animated_chart(labels, values, growth=None, chart_type="Barres horizontales", frame_duration=0.15, progress_bar=None):
     # Vérifier que les listes ont la même longueur
     if not (len(labels) == len(values)):
         st.error("Les listes des labels et des valeurs doivent avoir la même longueur.")
@@ -193,6 +202,12 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
+
+            # Mettre à jour la barre de progression
+            if progress_bar:
+                progress_percentage = int((frame + 1) / num_frames * 100)
+                progress_bar.progress(progress_percentage)
+
     elif chart_type == "Camembert":
         try:
             # Vérifier que la somme totale est supérieure à zéro
@@ -212,7 +227,7 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             base_palette = sns.color_palette("tab10")
             palette = list(itertools.islice(itertools.cycle(base_palette), num_colors))
 
-            for i in frames:
+            for idx, i in enumerate(frames):
                 current_fractions = [fraction * i for fraction in fractions_values]
 
                 # Vérifier que la somme des fractions est supérieure à zéro
@@ -238,6 +253,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
                     image = Image.open(buf).convert('RGBA')
                     images.append(image)
                     buf.close()
+
+                    # Mettre à jour la barre de progression
+                    if progress_bar:
+                        progress_percentage = int((idx + 1) / num_frames * 100)
+                        progress_bar.progress(progress_percentage)
         except Exception as e:
             st.error(f"Erreur lors de la création du graphique camembert : {e}")
             return None
@@ -252,39 +272,39 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             value_texts.append(ax.text(0, 0, '', fontsize=10, fontweight='bold',
                                        color='white',
                                        bbox=dict(facecolor='#4C566A', alpha=0.6, edgecolor='none', pad=0.5)))
-        for i in frames:
+        for idx, i in enumerate(frames):
             current_values = [val * i for val in values]
             if growth is not None:
                 current_growth = [g * i for g in growth]
 
             if chart_type == "Barres horizontales":
                 # Mettre à jour les largeurs des barres
-                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                for idx_bar, (bar_value, val) in enumerate(zip(bars_values, current_values)):
                     bar_value.set_width(val)
                 if growth is not None:
-                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                    for idx_bar, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
                         bar_growth.set_width(gro)
                         bar_growth.set_x(val)
                 # Mettre à jour les positions des valeurs
-                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                for idx_text, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
                     total_width = bar_value.get_width()
                     if growth is not None:
-                        total_width += bars_growth[idx].get_width()
+                        total_width += bars_growth[idx_text].get_width()
                     text.set_position((total_width + max_value*0.01, bar_value.get_y() + bar_value.get_height()/2))
                     text.set_text(f"{int(total_width)}")
             elif chart_type == "Barres verticales":
                 # Mettre à jour les hauteurs des barres
-                for idx, (bar_value, val) in enumerate(zip(bars_values, current_values)):
+                for idx_bar, (bar_value, val) in enumerate(zip(bars_values, current_values)):
                     bar_value.set_height(val)
                 if growth is not None:
-                    for idx, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
+                    for idx_bar, (bar_growth, val, gro) in enumerate(zip(bars_growth, current_values, current_growth)):
                         bar_growth.set_height(gro)
                         bar_growth.set_y(val)
                 # Mettre à jour les positions des valeurs
-                for idx, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
+                for idx_text, (text, bar_value) in enumerate(zip(value_texts, bars_values)):
                     total_height = bar_value.get_height()
                     if growth is not None:
-                        total_height += bars_growth[idx].get_height()
+                        total_height += bars_growth[idx_text].get_height()
                     text.set_position((bar_value.get_x() + bar_value.get_width()/2, total_height + max_value*0.01))
                     text.set_text(f"{int(total_height)}")
 
@@ -295,6 +315,11 @@ def create_animated_chart(labels, values, growth=None, chart_type="Barres horizo
             image = Image.open(buf).convert('RGBA')
             images.append(image)
             buf.close()
+
+            # Mettre à jour la barre de progression
+            if progress_bar:
+                progress_percentage = int((idx + 1) / num_frames * 100)
+                progress_bar.progress(progress_percentage)
 
     if not images:
         st.error(f"Aucune image n'a été générée pour le graphique {chart_type}.")
